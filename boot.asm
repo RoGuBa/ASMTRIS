@@ -1,8 +1,9 @@
+[bits 16]
 [org 0x7C00] ;interrupt vector table offsets
 
-;enter Graphic mode 320x200 EGA 16 Color
+;enter Graphic mode 13h 
 mov ah, 0x0
-mov al, 0xD
+mov al, 0x13
 int 0x10
 
 ;disable cursor blinking
@@ -33,6 +34,9 @@ mov ah, 0xE    ;tty mode
     int 0x10
     mov al, 'S'
     int 0x10
+
+
+%include "tetris.asm"
 
 jmp $
 

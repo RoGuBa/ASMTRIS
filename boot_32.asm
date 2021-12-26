@@ -1,16 +1,30 @@
 [org 0x7C00] ;interrupt vector table offsets
 
+;enter Graphic mode 13 320x200 VGA 256 color
+mov ah, 0x0
+mov al, 0x13
+int 0x10
+
+;disable cursor blinking
+mov ax, 0x1003
+mov bx, 0
+mov bh, 0
+int 0x10
+
 CODE_SEG equ GDT_code - GDT_start
 DATA_SEG equ GDT_data - GDT_start
+
+;enable A20
+in al, 0x92
+or al, 2
+out 0x92, al
 
 cli
 lgdt [GDT_descriptor]
 mov eax, cr0
-or eax, 1
+or eax, 0x1
 mov cr0, eax
 jmp CODE_SEG:start_32_bit_protected_mode
-
-jmp $
 
 GDT_start:
     GDT_null:    ;16byte 0s
@@ -38,10 +52,9 @@ GDT_descriptor:
 
 [bits 32]
 start_32_bit_protected_mode:
-    
-    mov al, 'A'
-    mov ah, 0x0f
-    mov [0xb8000], ax
+
+;    %include "tetris.asm"
+;    jmp tetris_start
 
 jmp $
 

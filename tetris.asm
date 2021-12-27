@@ -17,8 +17,8 @@ mov di, ax
 mov [es:di], dl
 
 
-mov ax, 180
-mov bx, 100
+mov ax, 50
+mov bx, 50
 
 
 drawRect:       ;ax -> y start (vertical)

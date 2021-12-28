@@ -1,52 +1,131 @@
 [bits 16]
 
-;delay  (CX:DX)
-mov ah, 0x86
-mov cx, 0xF
-mov dx, 0x0
+mov es, [off_screen]
 
-int 0x15
+mov byte [x_draw], 0
+mov byte [y_draw], 0
 
-mov ax, 0x0A000
-mov es, ax
-mov dl, 7
+mov ax, [border_color_o]
+mov word [c_draw_o], ax
 
+mov ax, [border_color_i]
+mov [c_draw_i], ax
 
-mov ax, 0
-mov di, ax
-mov [es:di], dl
+call drawBlock
 
+mov byte [x_draw], 1
 
-mov ax, 50
-mov bx, 50
+call drawBlock
 
+jmp end
 
-drawRect:       ;ax -> y start (vertical)
-                ;bx -> x start (horizontal)
-    mov cx, 320
-    mul cx
-    add ax, bx
-    mov di, ax
-    
-    mov bx, 8
-dR_loop:
-    cmp bx, 0
-    ja dR_loop_b
-    jmp drawRect_end
-    
-dR_loop_b:
-    dec bx
-    add ax, 312     ;320-8
-    mov cx, 8
-dR_loop_c:
+drawBlock:      ; x_draw
+                ; y_draw
+                ; c_draw_o
+                ; c_draw_i
+    ;draw border
+    mov ax, [y_draw]    ;
+    mul word [t_size]   ;calc real y pos
+    add ax, [y_start]   ;add y start offset
+    mul word [x_screen] ;multiply with screen x size
+    mov bx, ax
+    mov ax, [x_draw]    ;
+    mul word [t_size]   ;calc real x pos
+    add ax, [x_start]   ;add x start offset
+    add ax, bx          ;sum all together for real x y pos
+
+    mov cx, [t_size]
     dec cx
-    add ax, 1
-    mov di, ax
-    mov dl, 7
-    mov [es:di], dl
+    drawBlock_border0: 
+        mov dl, [c_draw_o]
+        mov di, ax
+        mov [es:di], dl
+        
+        add ax, 1
+        dec cx
+        jnz drawBlock_border0        
+        
+        mov cx, [t_size]
+        dec cx
+    drawBlock_border1:
+        mov dl, [c_draw_o]
+        mov di, ax         
+        mov [es:di], dl
+        
+        add ax, [x_screen]
+        dec cx
+        jnz drawBlock_border1
+        
+        mov cx, [t_size]
+        dec cx
+    drawBlock_border2:
+        mov dl, [c_draw_o]
+        mov di, ax         
+        mov [es:di], dl
+        
+        sub ax, 1
+        dec cx
+        jnz drawBlock_border2
+        
+        mov cx, [t_size]
+        dec cx
+    drawBlock_border3:
+        mov dl, [c_draw_o]
+        mov di, ax         
+        mov [es:di], dl
+        
+        sub ax, [x_screen]
+        dec cx
+        jnz drawBlock_border3
+        
+        add ax, 1
+        
+        mov bx, [t_size]
+        dec bx
+        dec bx
+    drawBlock_inner0:
+        mov cx, [t_size]
+        dec cx
+        dec cx
+        add ax, [x_screen]
+    drawBlock_inner1:
+        mov dl, [c_draw_i]
+        mov di, ax
+        mov [es:di], dl
+        
+        add ax, 1
+        dec cx
+        jnz drawBlock_inner1
+        
+        sub ax, word [t_size]
+        inc ax
+        inc ax
 
-    cmp cx, 0
-    ja dR_loop_c
-    jmp dR_loop
+        dec bx
+        mov cx, bx
+        jnz drawBlock_inner0
 
-drawRect_end:
+    ret
+
+
+
+end:
+    jmp $
+
+;data section
+off_screen: dw  0xA000
+x_screen:   dw  320
+x_start:    dw  120 
+y_start:    dw  20
+t_size:     dw  8
+t_size_m1:  dw  7
+t_x_size:   dw  10
+t_y_size:   dw  20
+
+border_color_o: dw  18
+border_color_i: dw  22
+
+x_draw:         dw 0
+y_draw:         dw 0
+c_draw_o:       dw 0
+c_draw_i:       dw 0

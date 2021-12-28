@@ -1,5 +1,5 @@
 [bits 16]
-[org 0x7C00] ;interrupt vector table offsets
+[org 0x7C00] ;interrupt vector table offset
 
 ;enter Graphic mode 13h 
 mov ah, 0x0

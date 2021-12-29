@@ -1,0 +1,6 @@
+add tick
+    move
+    rotate
+    fall
+        colision
+

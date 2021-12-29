@@ -14,19 +14,37 @@ jmp end
 
 drawTetromino:
     
+    ;color
+    mov ax, 4
+    mov [c_draw_o], ax
+    mov ax, 5
+    mov [c_draw_i], ax
+
+    ;select
     lea si, [b_array_start] ;set pointer to array
-    mov ax, [b_array_size]  ;
-    mov bx, 2               ;
-    mul bx                  ; cal array size *2
+    mov ax, [b_array_size]  
     mov bx, [tetromino_s]   ;
     mul bx                  ;
-    add si, ax              ; shift pointer to selected tetromino
-
-    xor ax, ax
-
-    mov al, [si]
-    cbw
+    add si, ax              ;shift pointer to selected tetromino
     
+    mov cx, 4
+    drawTetromino_loop:    
+        mov al, [si]
+        cbw
+        mov [x_draw], ax
+        
+        inc si
+
+        mov al, [si]
+        cbw
+        mov [y_draw], ax
+        
+        call drawBlock
+        
+        dec cx
+        jnz drawTetromino_loop
+    
+
 
     ret
 
@@ -223,9 +241,10 @@ tetromino_y:    dw 5
 tetromino_s:    dw 2
 
 ;block
-b_array_size:   dw 4
+b_array_size:   dw 8
 
-b_array_start:
+
+b_array_start:  ;(x,y), (x,y), (x,y), (x,y)
 ;----   (0)
 b0_array_x:     db -1,  0,  1,  2
 b0_array_y:     db  0,  0,  0,  0
@@ -237,8 +256,9 @@ b1_array_y:     db -1,  0,  0,  0
 
 ;  -
 ;---    (2)
-b2_array_x:     db -1,  0,  1,  1
-b2_array_y:     db  0,  0,  0,  1
+b2_array:       db -1, 0, 0, 0, 1, 0, 1, 1
+;b2_array_x:     db -1,  0,  1,  1
+;b2_array_y:     db  0,  0,  0,  1
 
 ;--
 ;--     (3)

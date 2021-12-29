@@ -2,8 +2,6 @@
 
 mov es, [off_screen]
 
-mov sp, 0x8000  ;stack pointer
-
 call drawTetromino
 
 call drawBorder
@@ -13,43 +11,56 @@ jmp end
 
 
 drawTetromino:
-    
-    ;color
-    mov ax, 4
-    mov [c_draw_o], ax
-    mov ax, 5
-    mov [c_draw_i], ax
 
     ;select
-    lea si, [b_array_start] ;set pointer to array
-    mov ax, [b_array_size]  
+    lea si, b_array_start ;set pointer to array
+    mov ax, [b_array_size]
     mov bx, [tetromino_s]   ;
     mul bx                  ;
     add si, ax              ;shift pointer to selected tetromino
     
+    ;color
+    mov al, [si]
+    cbw
+    mov [c_draw_i], ax
+    inc si
+    mov al, [si]
+    cbw
+    mov [c_draw_o], ax
+    inc si
+
     mov cx, 4
-    drawTetromino_loop:    
-        mov al, [si]
-        cbw
-        add ax, [tetromino_x]
-        mov [x_draw], ax
-        
-        inc si
-
-        mov al, [si]
-        cbw
-        add ax, [tetromino_y]
-        mov [y_draw], ax
-        
-        push cx
-        call drawBlock
-        pop cx
-
-        dec cx
-        jnz drawTetromino_loop
-    
-
-
+    mov bx, [tetromino_x]
+    drawTetromino_loop_0:    
+        mov dx, 1
+        drawTetromino_loop_1:
+            mov al, [si]
+            cbw
+            cmp ax, 0
+            jl negativ
+                ;positiv
+                add bx, ax
+                jmp next
+            negativ:
+                neg ax
+                sub bx, ax
+        next:
+            inc si
+            
+            cmp dx, 0
+            je drawTetromino_y
+                dec dx
+                mov [x_draw], bx
+                mov bx, [tetromino_y]
+                jmp drawTetromino_loop_1
+            drawTetromino_y:
+                mov [y_draw], bx
+                push cx
+                call drawBlock
+                pop cx
+                mov bx, [tetromino_x]
+                dec cx
+                jnz drawTetromino_loop_0
     ret
 
 
@@ -62,7 +73,7 @@ drawBorder:     ;subroutine to draw border around the game
 
     mov ax, [border_color_i]
     mov [c_draw_i], ax
-    
+        
     mov [border_flag], word 1
     
     mov cx, [t_x_size]
@@ -236,51 +247,64 @@ border_color_i: dw  22
 
 x_draw:         dw 0
 y_draw:         dw 0
-c_draw_o:       dw 0
 c_draw_i:       dw 0
+c_draw_o:       dw 0
 border_flag:    dw 0
 
-tetromino_x:    dw 5
+tetromino_x:    dw 2
 tetromino_y:    dw 5
-tetromino_s:    dw 2
+tetromino_s:    dw 1 
 
 ;block
-b_array_size:   dw 8
+b_array_size:   dw 10
 
 
-b_array_start:  ;(x,y), (x,y), (x,y), (x,y)
+b_array_start:  ;(c_o, c_i), (x,y), (x,y), (x,y), (x,y)
 ;----   (0)
-b0_array_x:     db -1,  0,  1,  2
-b0_array_y:     db  0,  0,  0,  0
+b0_color:       db 0x34, 0x35
+b0_array:       db -1, 0, 0, 0, 1, 0, 2, 0
+;b0_array_x:     db -1,  0,  1,  2
+;b0_array_y:     db  0,  0,  0,  0
 
 ;-
 ;---    (1)
-b1_array_x:     db -1, -1,  0,  1
-b1_array_y:     db -1,  0,  0,  0
+b1_color:       db 0x21, 0x01
+b1_array:       db -1, -1, -1, 0, 0, 0, 1, 0
+;b1_array_x:     db -1, -1,  0,  1
+;b1_array_y:     db -1,  0,  0,  0
 
 ;  -
 ;---    (2)
-b2_array:       db -1, 0, 0, 0, 1, 0, 1, 1
+b2_color:       db 0x2A, 0x29
+b2_array:       db -1, 0, 0, 0, 1, 0, 1, -1
 ;b2_array_x:     db -1,  0,  1,  1
-;b2_array_y:     db  0,  0,  0,  1
+;b2_array_y:     db  0,  0,  0, -1
 
 ;--
 ;--     (3)
-b3_array_x:     db -1,  0, -1,  0
-b3_array_y:     db -1, -1,  0,  0
+b3_color:       db 0x2C, 0x2B
+b3_array:       db -1, -1, 0, -1, -1, 0, 0, 0
+;b3_array_x:     db -1,  0, -1,  0
+;b3_array_y:     db -1, -1,  0,  0
 
 ; --
 ;--     (4)
-b4_array_x:     db -1,  0,  0,  1
-b4_array_y:     db  1,  1,  0,  0
+b4_color:       db 0x30, 0x77
+b4_array:       db -1, 1, 0, 1, 0, 0, 1, 0
+;b4_array_x:     db -1,  0,  0,  1
+;b4_array_y:     db  1,  1,  0,  0
 
 ; -
 ;---    (5)
-b5_array_x:     db -1,  0,  0,  1
-b5_array_y:     db  0,  0, -1,  0
+b5_color:       db 0x23, 0x6B
+b5_array:       db -1, 0, 0, 0, 0, -1, 1, 0
+;b5_array_x:     db -1,  0,  0,  1
+;b5_array_y:     db  0,  0, -1,  0
 
 ;--
 ; --    (6)
-b6_array_x:     db -1,  0,  0,  1
-b6_array_y:     db  0,  0,  1,  1
+b6_color:       db 0x28, 0x70
+b6_array:       db -1, 0, 0, 0, 0, 1, 1, 1
+;b6_array_x:     db -1,  0,  0,  1
+;b6_array_y:     db  0,  0,  1,  1
 

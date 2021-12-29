@@ -31,16 +31,20 @@ drawTetromino:
     drawTetromino_loop:    
         mov al, [si]
         cbw
+        add ax, [tetromino_x]
         mov [x_draw], ax
         
         inc si
 
         mov al, [si]
         cbw
+        add ax, [tetromino_y]
         mov [y_draw], ax
         
+        push cx
         call drawBlock
-        
+        pop cx
+
         dec cx
         jnz drawTetromino_loop
     

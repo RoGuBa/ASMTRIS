@@ -2,6 +2,8 @@
 
 mov es, [off_screen]
 
+call gameLoop
+
 call drawTetromino
 
 call drawBorder
@@ -10,8 +12,28 @@ jmp end
 
 
 
-drawTetromino:
+gameLoop:
+    
+    mov bx, 20
 
+    mov ah, 0x86
+    mov cx, 0
+    mov dx, 50000
+    
+    tickLoop:
+        int 0x15
+        dec bx
+        jnz tickLoop
+    
+    mov bx, 20
+    mov ah, 0x1
+    int 0x16
+    jz tickLoop
+
+    ret
+
+
+drawTetromino:
     ;select
     lea si, b_array_start ;set pointer to array
     mov ax, [b_array_size]
@@ -49,15 +71,17 @@ drawTetromino:
             
             cmp dx, 0
             je drawTetromino_y
+                ;x_value
                 dec dx
                 mov [x_draw], bx
                 mov bx, [tetromino_y]
                 jmp drawTetromino_loop_1
             drawTetromino_y:
+                ;y_value
                 mov [y_draw], bx
-                push cx
-                call drawBlock
-                pop cx
+                push cx             ;
+                call drawBlock      ; draw
+                pop cx              ;
                 mov bx, [tetromino_x]
                 dec cx
                 jnz drawTetromino_loop_0
@@ -242,6 +266,8 @@ t_size:     dw  8
 t_x_size:   dw  10
 t_y_size:   dw  20
 
+move_n:     dw  10
+
 border_color_o: dw  18
 border_color_i: dw  22
 
@@ -257,7 +283,6 @@ tetromino_s:    dw 1
 
 ;block
 b_array_size:   dw 10
-
 
 b_array_start:  ;(c_o, c_i), (x,y), (x,y), (x,y), (x,y)
 ;----   (0)

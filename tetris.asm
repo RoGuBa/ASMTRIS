@@ -2,15 +2,38 @@
 
 mov es, [off_screen]
 
+mov sp, 0x8000  ;stack pointer
+
+call drawTetromino
+
 call drawBorder
 
 jmp end
 
 
-drawBorder:
 
-    mov byte [x_draw], 0
-    mov byte [y_draw], 0
+drawTetromino:
+    
+    lea si, [b_array_start] ;set pointer to array
+    mov ax, [b_array_size]  ;
+    mov bx, 2               ;
+    mul bx                  ; cal array size *2
+    mov bx, [tetromino_s]   ;
+    mul bx                  ;
+    add si, ax              ; shift pointer to selected tetromino
+
+    xor ax, ax
+
+    mov al, [si]
+    cbw
+    
+
+    ret
+
+
+drawBorder:     ;subroutine to draw border around the game
+    mov word [x_draw], 0
+    mov word [y_draw], 0
 
     mov ax, [border_color_o]
     mov word [c_draw_o], ax
@@ -19,15 +42,55 @@ drawBorder:
     mov [c_draw_i], ax
     
     mov [border_flag], word 1
-
-    call drawBlock
-
-    ;draw border around game
     
+    mov cx, [t_x_size]
+    inc cx
+    drawBorder_0:
+        push cx
+        call drawBlock
+        pop cx
+        inc word [x_draw]
+        
+        dec cx
+        jnz drawBorder_0
+    
+    mov cx, [t_y_size]
+    inc cx
+    drawBorder_1:
+        push cx
+        call drawBlock
+        pop cx
+        inc word [y_draw]
+
+        dec cx
+        jnz drawBorder_1
+    
+    mov cx, [t_x_size]
+    inc cx
+    drawBorder_2:
+        push cx
+        call drawBlock
+        pop cx
+        dec word [x_draw]
+
+        dec cx
+        jnz drawBorder_2
+    
+    mov cx, [t_y_size]
+    inc cx
+    drawBorder_3:
+        push cx
+        call drawBlock
+        pop cx
+        dec word [y_draw]
+
+        dec cx
+        jnz drawBorder_3
+
     mov [border_flag], word 0
-
+    
     ret
-
+    
 drawBlock:      ; x_draw
                 ; y_draw
                 ; c_draw_o
@@ -55,14 +118,6 @@ drawBlock:      ; x_draw
     sub bx, ax
     mov ax, bx
     
-
-
-    ;delay  (CX:DX)      
-    mov ah, 0x86
-    mov cx, 0xF
-    mov dx, 0x0
-    int 0x15
-
     mov ax, bx
 
     drawBlock_border_flag_skip:
@@ -150,7 +205,7 @@ x_screen:   dw  320
 x_start:    dw  120 
 y_start:    dw  20
 t_size:     dw  8
-t_size_m1:  dw  7
+;t_size_m1:  dw  7
 t_x_size:   dw  10
 t_y_size:   dw  20
 
@@ -162,3 +217,46 @@ y_draw:         dw 0
 c_draw_o:       dw 0
 c_draw_i:       dw 0
 border_flag:    dw 0
+
+tetromino_x:    dw 5
+tetromino_y:    dw 5
+tetromino_s:    dw 2
+
+;block
+b_array_size:   dw 4
+
+b_array_start:
+;----   (0)
+b0_array_x:     db -1,  0,  1,  2
+b0_array_y:     db  0,  0,  0,  0
+
+;-
+;---    (1)
+b1_array_x:     db -1, -1,  0,  1
+b1_array_y:     db -1,  0,  0,  0
+
+;  -
+;---    (2)
+b2_array_x:     db -1,  0,  1,  1
+b2_array_y:     db  0,  0,  0,  1
+
+;--
+;--     (3)
+b3_array_x:     db -1,  0, -1,  0
+b3_array_y:     db -1, -1,  0,  0
+
+; --
+;--     (4)
+b4_array_x:     db -1,  0,  0,  1
+b4_array_y:     db  1,  1,  0,  0
+
+; -
+;---    (5)
+b5_array_x:     db -1,  0,  0,  1
+b5_array_y:     db  0,  0, -1,  0
+
+;--
+; --    (6)
+b6_array_x:     db -1,  0,  0,  1
+b6_array_y:     db  0,  0,  1,  1
+

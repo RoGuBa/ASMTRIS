@@ -8,6 +8,8 @@ call drawBorder
 call selectTetromino
 call drawTetromino
 
+call debugDelay
+
 call gameLoop
 
 jmp end
@@ -111,8 +113,9 @@ selectTetromino:
     add si, ax              ;shift pointer to selected tetromino
     
     ;copy to current_block
-    shr ax, 2              ;div array_size by 2
-    mov cx, ax
+    mov ax, [b_array_size]
+    shr ax, 2                 ;div array_size by 2 (1 word = 2 byte)
+    mov cx, 5
     lea di, tetromino_current_blocks    ;load mem adress
     
     selectTetromino_loop:
@@ -152,6 +155,12 @@ drawTetromino:
         mov dx, 1
         drawTetromino_loop_1:
             mov al, [si]
+            mov [debugPrint_char], al
+            push ax
+            push bx
+            call debugPrint
+            pop bx
+            pop ax
             cbw
             cmp ax, 0
             jl negativ
@@ -385,15 +394,27 @@ drawBlock:      ; x_draw
 
 debugDelay:
     mov ah, 0x86
-    mov cx, 0xF
+    mov cx, [debugDelay_time]
     mov dx, 0
     int 0x15
+    ret
+
+debugPrint:
+    mov ah, 0xE
+    mov al, [debugPrint_char]
+    add al, 0x30
+    mov bl, 10
+    mov bh, 0
+    int 0x10
     ret
 
 end:
     jmp $
 
 section .data
+
+debugDelay_time:    dw 0xFF
+debugPrint_char:    dd 0
 
 off_screen: dw  0xA000
 x_screen:   dw  320
@@ -417,7 +438,7 @@ border_flag:    dw 0
 
 tetromino_x:    dw 4
 tetromino_y:    dw 3
-tetromino_s:    dw 2 
+tetromino_s:    dw 1 
 tetromino_reset_flag:   dw 0
 
 tetromino_current_blocks:   db 0, 0, 0, 0, 0, 0, 0, 0, 0, 0

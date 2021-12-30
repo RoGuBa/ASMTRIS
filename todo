@@ -1,6 +1,4 @@
-add tick
-    move
-    rotate
-    fall
-        colision
-
+rotate
+remove full lines
+point counter
+level (change fall speed)

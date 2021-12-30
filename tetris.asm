@@ -39,22 +39,25 @@ moveTetrominoDown:
     moveTetrominoDown_check:
         mov ax, 1
         call visibleTetromino           ;make invisible to not detect self
-        mov cx, 4
-        mov ax, 0
+        mov bx, 0
         moveTetrominoDown_check_block:
+            mov [inW], bx
+            push bx
             call getTetrominoBlockPos
+            pop bx
             inc word [y_draw]   ;check block below
-            push ax
+            push bx
             call getBlock
+            pop bx
+            mov ax, [outW]
             cmp ax, 1           ;blocked by other block
             je moveTetrominoDown_blocked
             cmp ax, 2           ;blocked by border
             je moveTetrominoDown_blocked
 
-            pop ax
-            inc ax
-            dec cx
-            jnz moveTetrominoDown_check_block
+            inc bx
+            cmp bx, 4
+            jbe moveTetrominoDown_check_block
 
         mov ax, 0
         call visibleTetromino           ;make visible
@@ -68,7 +71,6 @@ moveTetrominoDown:
         ret
     moveTetrominoDown_blocked:
     
-    pop ax
     mov ax, 0
     call visibleTetromino               ;make visible
     ;spawn new
@@ -84,9 +86,10 @@ visibleTetromino:           ;ax 1->hidden 0->shown
     call drawTetromino
     ret
 
-getTetrominoBlockPos:       ;ax -> block id (0-3)
+getTetrominoBlockPos:       ;inW -> block id (0-3)
                             ;ret x_draw
                             ;ret y_draw
+    mov ax, [inW]
 
     lea si, tetromino_current_blocks
     add si, 2               ;skip color
@@ -248,7 +251,7 @@ drawBorder:     ;subroutine to draw border around the game
 
 getBlock:       ;x_draw
                 ;y_draw
-                ;ret to ax   0->no block 1->block 2->border
+                ;retrun to outW   0->no block 1->block 2->border
 
     call getRealPos
     mov di, ax
@@ -262,13 +265,16 @@ getBlock:       ;x_draw
     
     ;block found
     mov ax, 1
+    mov [outW], ax
     ret
 
     getBlock_border:
         mov ax, 2
+        mov [outW], ax
         ret
     getBlock_no_block:
-        mov ax, 0       ;? not needed
+        mov ax, 0
+        mov [outW], ax
         ret
 
 getRealPos:     ;x_draw
@@ -407,22 +413,25 @@ end:
 
 section .data
 
-debugDelay_time:    dw 0xFF
+debugDelay_time:    dw 0xF
 debugPrint_char:    dd 0
 
-off_screen: dw  0xA000
-x_screen:   dw  320
-x_start:    dw  120 
-y_start:    dw  20
-t_size:     dw  8
-;t_size_m1:  dw  7
-t_x_size:   dw  10
-t_y_size:   dw  20
+inW:        dw 0
+outW:       dw 0
 
-move_n:     dw  5
+off_screen: dw 0xA000
+x_screen:   dw 320
+x_start:    dw 120 
+y_start:    dw 20
+t_size:     dw 8
+;t_size_m1:  dw 7
+t_x_size:   dw 10
+t_y_size:   dw 20
 
-border_color_o: dw  18
-border_color_i: dw  22
+move_n:     dw 5
+
+border_color_o: dw 18
+border_color_i: dw 22
 
 x_draw:         dw 0
 y_draw:         dw 0
@@ -432,7 +441,7 @@ border_flag:    dw 0
 
 tetromino_x:    dw 4
 tetromino_y:    dw 3
-tetromino_s:    dw 5 
+tetromino_s:    dw 0
 tetromino_reset_flag:   dw 0
 
 tetromino_current_blocks:   db 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
@@ -464,9 +473,9 @@ b2_array:       db -1, 0, 0, 0, 1, 0, 1, -1
 ;--
 ;--     (3)
 b3_color:       db 0x2C, 0x2B
-b3_array:       db -1, -1, 0, -1, -1, 0, 0, 0
-;b3_array_x:     db -1,  0, -1,  0
-;b3_array_y:     db -1, -1,  0,  0
+b3_array:       db 0, 0, 0, -1, 1, 0, 1, -1
+;b3_array_x:     db 0,  0,  1,  1
+;b3_array_y:     db 0, -1,  0, -1
 
 ; --
 ;--     (4)

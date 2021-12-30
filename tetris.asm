@@ -2,55 +2,74 @@
 
 mov es, [off_screen]
 
-call gameLoop
+call drawBorder
 
 call drawTetromino
 
-call drawBorder
+call gameLoop
 
 jmp end
 
 
-
 gameLoop:
-    
     mov bx, 20
-
-    mov ah, 0x86
-    mov cx, 0
-    mov dx, 50000
-    
     tickLoop:
+        mov ah, 0x86
+        mov cx, 0
+        mov dx, 50000
         int 0x15
-        dec bx
-        jnz tickLoop
+        call moveTetromino
+        jmp tickLoop
     
-    mov bx, 20
-    mov ah, 0x1
-    int 0x16
+    key:
+        mov bx, 20
+        mov ah, 0x1
+        int 0x16
     jz tickLoop
 
     ret
 
+moveTetromino:
+    dec bx
+    jz moveTetromino_move
+    ret
+    moveTetromino_move:
+        mov ax, 1
+        mov [tetromino_reset_flag], ax
+        call drawTetromino
+        inc word [tetromino_y]
+        call drawTetromino
+        mov bx, 20
+        ret
 
 drawTetromino:
-    ;select
-    lea si, b_array_start ;set pointer to array
-    mov ax, [b_array_size]
-    mov bx, [tetromino_s]   ;
-    mul bx                  ;
-    add si, ax              ;shift pointer to selected tetromino
+    drawTetromino_select:
+        lea si, b_array_start ;set pointer to array
+        mov ax, [b_array_size]
+        mov bx, [tetromino_s]   ;
+        mul bx                  ;
+        add si, ax              ;shift pointer to selected tetromino
+        
+        mov ax, 0
+        cmp [tetromino_reset_flag], ax
+        je drawTetromino_color
+        mov [tetromino_reset_flag], ax
+        mov [c_draw_i], ax   ;more efficent to disable border draw
+        mov [c_draw_o], ax
+        add si, 2
+        jmp drawTetromino_start
+        
+    drawTetromino_color:
+        mov al, [si]
+        cbw
+        mov [c_draw_i], ax
+        inc si
+        mov al, [si]
+        cbw
+        mov [c_draw_o], ax
+        inc si
     
-    ;color
-    mov al, [si]
-    cbw
-    mov [c_draw_i], ax
-    inc si
-    mov al, [si]
-    cbw
-    mov [c_draw_o], ax
-    inc si
-
+    drawTetromino_start:
     mov cx, 4
     mov bx, [tetromino_x]
     drawTetromino_loop_0:    
@@ -280,7 +299,7 @@ border_flag:    dw 0
 tetromino_x:    dw 2
 tetromino_y:    dw 5
 tetromino_s:    dw 1 
-
+tetromino_reset_flag:   dw 0
 ;block
 b_array_size:   dw 10
 

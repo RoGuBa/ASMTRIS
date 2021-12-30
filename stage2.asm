@@ -13,29 +13,29 @@ mov bx, 0
 mov bh, 0
 int 0x10
 
-;write RGB OS with fancy colors
+;move cursor
+mov ah, 0x2
+mov bh, 0
+mov dh, 1
+mov dl, 1
+int 0x10
+
+;write TETRIS
 mov ah, 0xE    ;tty mode 
-
-    mov al, 'R'
-    mov bl, 0x4
-    int 0x10
-
-    mov al, 'G'
-    mov bl, 0x2
-    int 0x10
-
-    mov al, 'B'
-    mov bl, 0x1
-    int 0x10
     
-    mov bl, 0xF ;white
-    mov al, ' '
+    mov bl, 0x5 ;purple
+    mov al, 'T'
     int 0x10
-    mov al, 'O'
+    mov al, 'E'
+    int 0x10
+    mov al, 'T'
+    int 0x10 
+    mov al, 'R'
+    int 0x10
+    mov al, 'I'
     int 0x10
     mov al, 'S'
     int 0x10
-
 
 %include "tetris.asm"
 

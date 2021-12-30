@@ -15,27 +15,43 @@ call gameLoop
 jmp end
 
 gameLoop:
+    tickLoop_start:
     mov bx, [move_n]
     tickLoop:
         mov ah, 0x86
         mov cx, 0
-        mov dx, 50000
+        mov dx, [tick_time]
         int 0x15
         push bx
         call check4Move
         pop bx
-        call moveTetrominoDown
+        dec bx
+        test bx, bx
+        push tickLoop_start
+        jz moveTetrominoDown
         jmp tickLoop
     ret
 
 check4Move:
     call readKeyboard
     mov ah, byte [key_scan_code]
-    cmp ah, byte [key_move_left]
-    je c4M_left
-    cmp ah, byte [key_move_right]
-    je c4M_right
-    ret
+    
+    ;cmp ah, byte [key_move_down]
+    ;jne c4M_down_reset
+    
+    c4M_press:
+        cmp ah, byte [key_move_left]
+        je c4M_left
+        cmp ah, byte [key_move_right]
+        je c4M_right
+        cmp ah, byte [key_move_down]
+        je c4M_down
+        ret
+    
+    ;c4M_down_reset:
+    ;    mov cx, [move_n_def]
+    ;    mov [move_n], cx
+    ;    jmp c4M_press
 
     c4M_left:
         mov [tetromino_move_dir], byte -1
@@ -44,6 +60,13 @@ check4Move:
     c4M_right:
         mov [tetromino_move_dir], byte 1
         call moveTetrominoHor
+        ret
+    c4M_down:
+        ;mov ax, [move_n_def]
+        ;shr ax, 2       ;div 4
+        ;mov ax, 0
+        ;mov [move_n], ax
+        call moveTetrominoDown
         ret
 
 readKeyboard:
@@ -112,9 +135,6 @@ moveTetrominoHor:
         ret
 
 moveTetrominoDown:
-    dec bx                  ;move only when bx is zero
-    jz moveTetrominoDown_check
-    ret
     moveTetrominoDown_check:
         mov ax, 1
         call visibleTetromino           ;make invisible to not detect self
@@ -141,7 +161,6 @@ moveTetrominoDown:
     moveTetrominoDown_move:
         inc word [tetromino_y]
         call drawTetromino
-        mov bx, [move_n]
         ret
     
     moveTetrominoDown_blocked:
@@ -152,7 +171,6 @@ moveTetrominoDown:
     mov [tetromino_y], word 0
     call selectTetromino
     call drawTetromino
-    mov bx, [move_n]
     ret
 
 visibleTetromino:           ;ax 1->hidden 0->shown
@@ -502,7 +520,11 @@ t_size:     dw 8
 t_x_size:   dw 10
 t_y_size:   dw 20
 
-move_n:     dw 5
+tick_time:      dw 10000
+tick_time_def:  dw 10000
+
+move_n:     dw 50
+move_n_def: dw 50
 
 border_color_o: dw 18
 border_color_i: dw 22
@@ -521,6 +543,7 @@ tetromino_reset_flag:   dw 0
 key_scan_code:      dd 0
 key_move_left:      dd 0x4B
 key_move_right:     dd 0x4D
+key_move_down:      dd 0x50
 
 tetromino_move_dir: dd 0        ;-1 -> left  1 -> right
 

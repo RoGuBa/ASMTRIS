@@ -1,4 +1,5 @@
 [bits 16]
+section .text
 
 mov es, [off_screen]
 
@@ -9,7 +10,6 @@ call drawTetromino
 call gameLoop
 
 jmp end
-
 
 gameLoop:
     mov bx, 20
@@ -30,9 +30,12 @@ gameLoop:
     ret
 
 moveTetromino:
-    dec bx
-    jz moveTetromino_move
+    dec bx                  ;move only when bx is zero
+    jz moveTetromino_check
     ret
+    moveTetromino_check:
+        
+
     moveTetromino_move:
         mov ax, 1
         mov [tetromino_reset_flag], ax
@@ -51,7 +54,7 @@ drawTetromino:
         add si, ax              ;shift pointer to selected tetromino
         
         mov ax, 0
-        cmp [tetromino_reset_flag], ax
+        cmp [tetromino_reset_flag], ax      ;check for reset_flag
         je drawTetromino_color
         mov [tetromino_reset_flag], ax
         mov [c_draw_i], ax   ;more efficent to disable border draw
@@ -98,9 +101,9 @@ drawTetromino:
             drawTetromino_y:
                 ;y_value
                 mov [y_draw], bx
-                push cx             ;
-                call drawBlock      ; draw
-                pop cx              ;
+                push cx                 ;
+                call drawBlock          ; draw
+                pop cx                  ;
                 mov bx, [tetromino_x]
                 dec cx
                 jnz drawTetromino_loop_0
@@ -166,13 +169,32 @@ drawBorder:     ;subroutine to draw border around the game
     mov [border_flag], word 0
     
     ret
+
+getBlock:       ;x_draw
+                ;y_draw
+                ;ret to stack   0->no block 1->block 2->border
+    call getRealPos
+    cmp ax, 0
+    je getBlock_no_block
+    cmp ax, [border_color_o]
+    je getBlock_border
     
-drawBlock:      ; x_draw
-                ; y_draw
-                ; c_draw_o
-                ; c_draw_i
-                ; border_flag
-    
+    ;block found
+    mov ax, 1
+    push ax
+    ret
+
+    getBlock_border:
+        mov ax, 2
+        push ax
+        ret
+    getBlock_no_block:
+        push ax
+        ret
+
+getRealPos:     ;x_draw
+                ;y_draw
+                ;ret ax
     mov ax, [y_draw]    ;
     mul word [t_size]   ;calc real y pos
     add ax, [y_start]   ;add y start offset
@@ -182,7 +204,22 @@ drawBlock:      ; x_draw
     mul word [t_size]   ;calc real x pos
     add ax, [x_start]   ;add x start offset
     add ax, bx          ;sum all together for real x y pos
-        
+    ret
+
+drawBlock:      ; x_draw
+                ; y_draw
+                ; c_draw_o
+                ; c_draw_i
+                ; border_flag
+    
+    mov ax, 0
+    cmp [y_draw], ax        ;skip if block is to high
+    jge drawBlock_normal
+    ret
+
+    drawBlock_normal:
+       call getRealPos 
+
     mov cx, [border_flag]
     cmp cx, 0
     jz drawBlock_border_flag_skip
@@ -193,11 +230,9 @@ drawBlock:      ; x_draw
     add ax, [t_size]
     sub bx, ax
     mov ax, bx
-    
-    mov ax, bx
 
     drawBlock_border_flag_skip:
-    
+
     mov cx, [t_size]
     dec cx
     drawBlock_outer0: 
@@ -275,7 +310,8 @@ drawBlock:      ; x_draw
 end:
     jmp $
 
-;data section
+section .data
+
 off_screen: dw  0xA000
 x_screen:   dw  320
 x_start:    dw  120 
@@ -297,7 +333,7 @@ c_draw_o:       dw 0
 border_flag:    dw 0
 
 tetromino_x:    dw 2
-tetromino_y:    dw 5
+tetromino_y:    dw 0
 tetromino_s:    dw 1 
 tetromino_reset_flag:   dw 0
 ;block

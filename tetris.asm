@@ -19,18 +19,97 @@ gameLoop:
     tickLoop:
         mov ah, 0x86
         mov cx, 0
-        mov dx, 10000
+        mov dx, 50000
         int 0x15
+        push bx
+        call check4Move
+        pop bx
         call moveTetrominoDown
         jmp tickLoop
-    
-    key:
-        mov bx, 20
-        mov ah, 0x1
-        int 0x16
-    jz tickLoop
-
     ret
+
+check4Move:
+    call readKeyboard
+    mov ah, byte [key_scan_code]
+    cmp ah, byte [key_move_left]
+    je c4M_left
+    cmp ah, byte [key_move_right]
+    je c4M_right
+    ret
+
+    c4M_left:
+        mov [tetromino_move_dir], byte -1
+        call moveTetrominoHor
+        ret
+    c4M_right:
+        mov [tetromino_move_dir], byte 1
+        call moveTetrominoHor
+        ret
+
+readKeyboard:
+    mov ah, 0x1
+    int 0x16
+    jz readKeyboard_no_input
+    ;found a key input
+    mov byte [key_scan_code], ah
+    call clearKeyboardBuffer
+    ret
+    readKeyboard_no_input:
+        mov ah, byte 0
+        mov byte [key_scan_code], ah
+        ;cmp ah, ah                  ;not sure if needed
+        ret
+
+clearKeyboardBuffer:
+    mov ah, 0x1
+    int 0x16
+    jz clearKeyboardBuffer_end
+    ;mov [debugPrint_char], al      ;debug print ascii key
+    ;call debugPrint
+    mov ah, 0x0
+    int 0x16
+    jmp clearKeyboardBuffer
+    clearKeyboardBuffer_end:
+        ret
+
+moveTetrominoHor:
+
+    mov ax, 1
+    call visibleTetromino
+    
+    mov cx, 0
+    moveTetrominoHor_check_block:
+        mov [inW], cx
+        push cx
+        call getTetrominoBlockPos
+        pop cx
+        mov al, [tetromino_move_dir]
+        cbw
+        add word [x_draw], ax       ;might check for pos / neg
+        push cx
+        call getBlock
+        pop cx
+        mov ax, [outW]
+        cmp ax, 1
+        je moveTetrominoHor_blocked
+        cmp ax, 2
+        je moveTetrominoHor_blocked
+
+        inc cx
+        cmp cx, 4
+        jbe moveTetrominoHor_check_block
+
+    moveTetrominoHor_move:
+        mov al, [tetromino_move_dir]
+        cbw
+        add word [tetromino_x], ax
+        call drawTetromino
+        ret
+    
+    moveTetrominoHor_blocked:
+        mov ax, 0
+        call visibleTetromino
+        ret
 
 moveTetrominoDown:
     dec bx                  ;move only when bx is zero
@@ -39,43 +118,38 @@ moveTetrominoDown:
     moveTetrominoDown_check:
         mov ax, 1
         call visibleTetromino           ;make invisible to not detect self
-        mov bx, 0
+        mov cx, 0
         moveTetrominoDown_check_block:
-            mov [inW], bx
-            push bx
+            mov [inW], cx
+            push cx
             call getTetrominoBlockPos
-            pop bx
+            pop cx
             inc word [y_draw]   ;check block below
-            push bx
+            push cx
             call getBlock
-            pop bx
+            pop cx
             mov ax, [outW]
             cmp ax, 1           ;blocked by other block
             je moveTetrominoDown_blocked
             cmp ax, 2           ;blocked by border
             je moveTetrominoDown_blocked
 
-            inc bx
-            cmp bx, 4
+            inc cx
+            cmp cx, 4
             jbe moveTetrominoDown_check_block
-
-        mov ax, 0
-        call visibleTetromino           ;make visible
+    
     moveTetrominoDown_move:
-        mov ax, 1
-        mov [tetromino_reset_flag], ax
-        call drawTetromino
         inc word [tetromino_y]
         call drawTetromino
         mov bx, [move_n]
         ret
-    moveTetrominoDown_blocked:
     
+    moveTetrominoDown_blocked:
     mov ax, 0
     call visibleTetromino               ;make visible
     ;spawn new
     mov [tetromino_x], word 4
-    mov [tetromino_y], word 2
+    mov [tetromino_y], word 0
     call selectTetromino
     call drawTetromino
     mov bx, [move_n]
@@ -402,7 +476,7 @@ debugDelay:
 debugPrint:
     mov ah, 0xE
     mov al, [debugPrint_char]
-    add al, 0x30
+    ;add al, 0x30
     mov bl, 10
     mov bh, 0
     int 0x10
@@ -441,8 +515,14 @@ border_flag:    dw 0
 
 tetromino_x:    dw 4
 tetromino_y:    dw 3
-tetromino_s:    dw 0
+tetromino_s:    dw 5 
 tetromino_reset_flag:   dw 0
+
+key_scan_code:      dd 0
+key_move_left:      dd 0x4B
+key_move_right:     dd 0x4D
+
+tetromino_move_dir: dd 0        ;-1 -> left  1 -> right
 
 tetromino_current_blocks:   db 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 

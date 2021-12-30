@@ -5,6 +5,7 @@ mov es, [off_screen]
 
 call drawBorder
 
+call selectTetromino
 call drawTetromino
 
 call gameLoop
@@ -18,7 +19,7 @@ gameLoop:
         mov cx, 0
         mov dx, 50000
         int 0x15
-        call moveTetromino
+        call moveTetrominoDown
         jmp tickLoop
     
     key:
@@ -29,14 +30,17 @@ gameLoop:
 
     ret
 
-moveTetromino:
+moveTetrominoDown:
     dec bx                  ;move only when bx is zero
-    jz moveTetromino_check
+    jz moveTetrominoDown_check
     ret
-    moveTetromino_check:
-        
+    moveTetrominoDown_check:
+       ;call getBlock
+       ;cmp ax
 
-    moveTetromino_move:
+
+
+    moveTetrominoDown_move:
         mov ax, 1
         mov [tetromino_reset_flag], ax
         call drawTetromino
@@ -45,23 +49,38 @@ moveTetromino:
         mov bx, 20
         ret
 
+selectTetromino:
+    lea si, b_array_start   ;set pointer to array
+    mov ax, [b_array_size]
+    mov bx, [tetromino_s]   ;
+    mul bx                  ;
+    add si, ax              ;shift pointer to selected tetromino
+    
+    ;copy to current_block
+    shr ax, 2              ;div array_size by 2
+    mov cx, ax
+    lea di, tetromino_current_blocks    ;load mem adress
+    
+    selectTetromino_loop:
+        push word [si]                  ;read 2 byte from [si]
+        pop word [di]                   ;write it to [di]
+        add si, 2                       ;inc si by 2
+        add di, 2                       ;inc di by 2
+        dec cx
+        jnz selectTetromino_loop
+    ret 
+
 drawTetromino:
-    drawTetromino_select:
-        lea si, b_array_start ;set pointer to array
-        mov ax, [b_array_size]
-        mov bx, [tetromino_s]   ;
-        mul bx                  ;
-        add si, ax              ;shift pointer to selected tetromino
-        
-        mov ax, 0
-        cmp [tetromino_reset_flag], ax      ;check for reset_flag
-        je drawTetromino_color
-        mov [tetromino_reset_flag], ax
-        mov [c_draw_i], ax   ;more efficent to disable border draw
-        mov [c_draw_o], ax
-        add si, 2
-        jmp drawTetromino_start
-        
+    lea si, tetromino_current_blocks
+    mov ax, 0
+    cmp [tetromino_reset_flag], ax      ;check for reset_flag
+    je drawTetromino_color
+    mov [tetromino_reset_flag], ax
+    mov [c_draw_i], ax   ;more efficent to disable border draw
+    mov [c_draw_o], ax
+    add si, 2
+    jmp drawTetromino_start
+
     drawTetromino_color:
         mov al, [si]
         cbw
@@ -172,7 +191,7 @@ drawBorder:     ;subroutine to draw border around the game
 
 getBlock:       ;x_draw
                 ;y_draw
-                ;ret to stack   0->no block 1->block 2->border
+                ;ret to ax   0->no block 1->block 2->border
     call getRealPos
     cmp ax, 0
     je getBlock_no_block
@@ -181,15 +200,12 @@ getBlock:       ;x_draw
     
     ;block found
     mov ax, 1
-    push ax
     ret
 
     getBlock_border:
         mov ax, 2
-        push ax
         ret
     getBlock_no_block:
-        push ax
         ret
 
 getRealPos:     ;x_draw
@@ -334,12 +350,15 @@ border_flag:    dw 0
 
 tetromino_x:    dw 2
 tetromino_y:    dw 0
-tetromino_s:    dw 1 
+tetromino_s:    dw 2 
 tetromino_reset_flag:   dw 0
+
+tetromino_current_blocks:   db 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+
 ;block
 b_array_size:   dw 10
 
-b_array_start:  ;(c_o, c_i), (x,y), (x,y), (x,y), (x,y)
+b_array_start:  ;(c_i, c_o), (x,y), (x,y), (x,y), (x,y)
 ;----   (0)
 b0_color:       db 0x34, 0x35
 b0_array:       db -1, 0, 0, 0, 1, 0, 2, 0

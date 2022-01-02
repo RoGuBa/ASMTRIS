@@ -3,10 +3,11 @@
 helpFunc() {
     echo "Parameters:"
     echo -e "    none -> build and run on qemu"
-    echo -e "    -h   -> open this help menu"
-    echo -e "    -i   -> build and create iso file"
-    echo -e "    -b   -> only build bin file"
-    echo -e "    -r   -> only run bin file"
+    echo -e "    -h               -> open this help menu"
+    echo -e "    -i               -> build and create iso file"
+    echo -e "    -b               -> only build bin file"
+    echo -e "    -r               -> only run bin file"
+    echo -e "    -u usb-stick-dir -> build and install on usb-stick"
     exit
 }
 
@@ -17,6 +18,8 @@ build() {
 }
 
 buildIso() {
+    build
+
     dd if=/dev/zero of=tetris.img bs=1024 count=1440 status=none
     dd if=boot.bin of=tetris.img conv=notrunc status=none
     
@@ -29,14 +32,31 @@ buildIso() {
     echo "tetris.iso was generated"
 }
 
+writeToUsb() {
+    buildIso
+    if [[ $usbDrive =~ /dev/sd[A-Z]?[a-z]$ ]]; then
+        sudo umount $usbDrive
+        sudo dd if=tetris.iso of=$usbDrive bs=1024 conv=notrunc \
+            status=progress && sync
+        echo "usb-stick is ready"
+    else
+        echo "Error: ${usbDrive} is not a drive"
+        exit 1
+    fi
+}
+
 run() {
     qemu-system-x86_64 boot.bin
 }
 
-while getopts "ibrh" opt; do
+while getopts "u:ibrh" opt; do
     case $opt in
+        u )
+            usbDrive=$OPTARG
+            writeToUsb
+            exit
+            ;;
         i ) 
-            build
             buildIso
             exit
             ;;

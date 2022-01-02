@@ -46,6 +46,10 @@ check4Move:
         je c4M_right
         cmp ah, byte [key_move_down]
         je c4M_down
+        cmp ah, byte [key_rotate_left]
+        je c4M_rotate_left
+        cmp ah, byte [key_rotate_right]
+        je c4M_rotate_right
         ret
     
     ;c4M_down_reset:
@@ -68,6 +72,66 @@ check4Move:
         ;mov [move_n], ax
         call moveTetrominoDown
         ret
+    c4M_rotate_left:
+        ret
+    c4M_rotate_right:
+        ;copy rotated to temp
+        mov si, tetromino_current_blocks
+        add si, 2               ;skip color
+        mov di, tetromino_temp_blocks
+        mov cx, 4
+        c4m_rotate_right_loop0:
+            
+            mov bl, byte [si]        ;x
+            inc si
+            mov al, byte [si]        ;y
+            neg al
+            inc si
+            
+            mov byte [di], al
+            inc di
+            mov byte [di], bl
+            inc di
+            
+            dec cx
+            jnz c4m_rotate_right_loop0
+        
+        ;make invisible
+        mov ax, 1
+        call visibleTetromino
+        ;check for collision
+        mov [tetromino_temp_flag], word 1      ;enable temp flag
+        ;mov si, tetromino_temp_blocks
+        mov cx, 0
+        c4M_rotate_right_loop1_0:
+            mov [inW], cx
+            call getTetrominoBlockPos
+            call getBlock
+            cmp [outW], word 0
+            jne c4M_rotate_right_exit
+            inc cx
+            cmp cx, 4
+            jbe c4M_rotate_right_loop1_0
+            
+            ;write temp in current
+            mov si, tetromino_temp_blocks
+            mov di, tetromino_current_blocks
+            add di, 2
+            mov cx, 8
+            c4M_rotate_right_loop1_1:
+                mov al, byte [si]
+                mov byte [di], al
+                add si, 1
+                add di, 1
+                dec cx
+                jnz c4M_rotate_right_loop1_1
+        c4M_rotate_right_exit:
+            ;make visible
+            mov ax, 0
+            call visibleTetromino
+            mov [tetromino_temp_flag], word 0      ;disable temp flag
+            ret
+
 
 readKeyboard:
     mov ah, 0x1
@@ -75,7 +139,7 @@ readKeyboard:
     jz readKeyboard_no_input
     ;found a key input
     mov byte [key_scan_code], ah
-    call clearKeyboardBuffer
+    call cmovrKeyboardBuffer
     ret
     readKeyboard_no_input:
         mov ah, byte 0
@@ -83,16 +147,16 @@ readKeyboard:
         ;cmp ah, ah                  ;not sure if needed
         ret
 
-clearKeyboardBuffer:
+cmovrKeyboardBuffer:
     mov ah, 0x1
     int 0x16
-    jz clearKeyboardBuffer_end
+    jz cmovrKeyboardBuffer_end
     ;mov [debugPrint_char], al      ;debug print ascii key
     ;call debugPrint
     mov ah, 0x0
     int 0x16
-    jmp clearKeyboardBuffer
-    clearKeyboardBuffer_end:
+    jmp cmovrKeyboardBuffer
+    cmovrKeyboardBuffer_end:
         ret
 
 moveTetrominoHor:
@@ -179,43 +243,49 @@ visibleTetromino:           ;ax 1->hidden 0->shown
     ret
 
 getTetrominoBlockPos:       ;inW -> block id (0-3)
+                            ;tetromino_temp_flag 0 -> current 1 -> temp
                             ;ret x_draw
                             ;ret y_draw
     mov ax, [inW]
-
-    lea si, tetromino_current_blocks
-    add si, 2               ;skip color
+    cmp [tetromino_temp_flag], word 0
+    jne getTetrominoBlockPos_temp
+        mov si, tetromino_current_blocks
+        add si, 2               ;skip color
+    jmp getTetrominoBlockPos_current
+    getTetrominoBlockPos_temp:
+        mov si, tetromino_temp_blocks
+    getTetrominoBlockPos_current:
     mov bx, 2
     mul bx
     add si, ax              ;add block offset
-    mov al, [si]
+    mov al, byte [si]
     cbw
     add ax, [tetromino_x]
     mov [x_draw], ax
     
     inc si
-    mov al, [si]
+    mov al, byte [si]
     cbw
     add ax, [tetromino_y]
     mov [y_draw], ax
     ret
 
 selectTetromino:
-    lea si, b_array_start   ;set pointer to array
-    mov ax, [b_array_size]
+    mov si, b_array_start   ;set pointer to array
+    mov ax, 10
     mov bx, [tetromino_s]   ;
     mul bx                  ;
     add si, ax              ;shift pointer to selected tetromino
     
     ;copy to current_block
-    mov ax, [b_array_size]
-    shr ax, 1                 ;div array_size by 2 (1 word = 2 byte)
-    mov cx, ax
-    lea di, tetromino_current_blocks    ;load mem adress
+    mov cx, 5
+    ;shr ax, 1                 ;div array_size by 2 (1 word = 2 byte)
+    ;mov cx, ax
+    mov di, tetromino_current_blocks    ;load mem adress
     
     selectTetromino_loop:
-        push word [si]                  ;read 2 byte from [si]
-        pop word [di]                   ;write it to [di]
+        mov ax, word [si]                    ;read 2 byte from [si]
+        mov word [di], ax                    ;write it to [di]
         add si, 2                       ;inc si by 2
         add di, 2                       ;inc di by 2
         dec cx
@@ -223,7 +293,7 @@ selectTetromino:
     ret 
 
 drawTetromino:
-    lea si, tetromino_current_blocks
+    mov si, tetromino_current_blocks
     mov ax, 0
     cmp [tetromino_reset_flag], ax      ;check for reset_flag
     je drawTetromino_color
@@ -234,11 +304,11 @@ drawTetromino:
     jmp drawTetromino_start
 
     drawTetromino_color:
-        mov al, [si]
+        mov al, byte [si]
         cbw
         mov [c_draw_i], ax
         inc si
-        mov al, [si]
+        mov al, byte [si]
         cbw
         mov [c_draw_o], ax
         inc si
@@ -249,7 +319,7 @@ drawTetromino:
     drawTetromino_loop_0:    
         mov dx, 1
         drawTetromino_loop_1:
-            mov al, [si]
+            mov al, byte [si]
             cbw
             cmp ax, 0
             jl negativ
@@ -494,7 +564,7 @@ debugDelay:
 debugPrint:
     mov ah, 0xE
     mov al, [debugPrint_char]
-    ;add al, 0x30
+    add al, 0x30
     mov bl, 10
     mov bh, 0
     int 0x10
@@ -537,17 +607,23 @@ border_flag:    dw 0
 
 tetromino_x:    dw 4
 tetromino_y:    dw 3
-tetromino_s:    dw 5 
+tetromino_s:    dw 0
 tetromino_reset_flag:   dw 0
+tetromino_temp_flag:    dw 0
 
-key_scan_code:      dd 0
-key_move_left:      dd 0x4B
-key_move_right:     dd 0x4D
-key_move_down:      dd 0x50
 
-tetromino_move_dir: dd 0        ;-1 -> left  1 -> right
+key_scan_code:      db 0
+key_move_left:      db 0x4B     ;left arrow
+key_move_right:     db 0x4D     ;right arrow
+key_move_down:      db 0x50     ;down arrow
+key_rotate_right:   db 0x20     ;d
+key_rotate_left:    db 0x1E     ;a
+
+
+tetromino_move_dir: db 0        ;-1 -> left  1 -> right
 
 tetromino_current_blocks:   db 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+tetromino_temp_blocks:      db 0, 0, 0, 0, 0, 0, 0, 0
 
 ;block
 b_array_size:   dw 10
@@ -555,8 +631,8 @@ b_array_size:   dw 10
 b_array_start:  ;(c_i, c_o), (x,y), (x,y), (x,y), (x,y)
 ;----   (0)
 b0_color:       db 0x34, 0x35
-b0_array:       db -1, 0, 0, 0, 1, 0, 2, 0
-;b0_array_x:     db -1,  0,  1,  2
+b0_array:       db -2, 0, -1, 0, 0, 0, 1, 0
+;b0_array_x:     db -2, -1,  0,  1
 ;b0_array_y:     db  0,  0,  0,  0
 
 ;-

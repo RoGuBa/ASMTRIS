@@ -7,7 +7,7 @@ helpFunc() {
     echo -e "    -i               -> build and create iso file"
     echo -e "    -b               -> only build bin file"
     echo -e "    -r               -> only run bin file"
-    echo -e "    -u usb-stick-dir -> build and install on usb-stick"
+    echo -e "    -u usb-stick-dir -> build and install on usb-stick (not yet implemented)"
     exit
 }
 
@@ -33,16 +33,21 @@ buildIso() {
 }
 
 writeToUsb() {
-    buildIso
-    if [[ $usbDrive =~ /dev/sd[A-Z]?[a-z]$ ]]; then
-        sudo umount $usbDrive
-        sudo dd if=tetris.iso of=$usbDrive bs=1024 conv=notrunc \
-            status=progress && sync
-        echo "usb-stick is ready"
-    else
-        echo "Error: ${usbDrive} is not a drive"
-        exit 1
-    fi
+    echo "Error: Function not yet implemented"
+    exit 1
+#    buildIso
+#    if [[ $usbDrive =~ /dev/sd[A-Z]?[a-z]$ ]]; then
+#        sudo umount $usbDrive
+#        sudo parted --script $usbDrive \
+#            mklabel gpt \
+#            mkpart primary fat32 1MiB 100%
+#        sudo dd if=tetris.iso of=$usbDrive bs=1024 conv=notrunc \
+#            status=progress && sync
+#        echo "usb-stick is ready"
+#    else
+#        echo "Error: ${usbDrive} is not a drive"
+#        exit 1
+#    fi
 }
 
 run() {

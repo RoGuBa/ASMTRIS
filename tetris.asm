@@ -107,22 +107,23 @@ check4Move:
             mov [inW], cx
             call getTetrominoBlockPos
             call getBlock
+
             cmp [outW], word 0
             jne c4M_rotate_right_exit
             inc cx
             cmp cx, 4
-            jbe c4M_rotate_right_loop1_0
+            jb c4M_rotate_right_loop1_0
             
-            ;write temp in current
+            ;no collision - write temp in current
             mov si, tetromino_temp_blocks
             mov di, tetromino_current_blocks
             add di, 2
-            mov cx, 8
+            mov cx, 4
             c4M_rotate_right_loop1_1:
-                mov al, byte [si]
-                mov byte [di], al
-                add si, 1
-                add di, 1
+                mov ax, word [si]
+                mov word [di], ax
+                add si, 2
+                add di, 2
                 dec cx
                 jnz c4M_rotate_right_loop1_1
         c4M_rotate_right_exit:
@@ -205,22 +206,18 @@ moveTetrominoDown:
         mov cx, 0
         moveTetrominoDown_check_block:
             mov [inW], cx
-            push cx
             call getTetrominoBlockPos
-            pop cx
             inc word [y_draw]   ;check block below
-            push cx
             call getBlock
-            pop cx
             mov ax, [outW]
-            cmp ax, 1           ;blocked by other block
-            je moveTetrominoDown_blocked
-            cmp ax, 2           ;blocked by border
-            je moveTetrominoDown_blocked
+            cmp ax, 0           ;blocked by other block
+            jne moveTetrominoDown_blocked
+            ;cmp ax, 2           ;blocked by border
+            ;je moveTetrominoDown_blocked
 
             inc cx
             cmp cx, 4
-            jbe moveTetrominoDown_check_block
+            jb moveTetrominoDown_check_block
     
     moveTetrominoDown_move:
         inc word [tetromino_y]
@@ -631,8 +628,8 @@ b_array_size:   dw 10
 b_array_start:  ;(c_i, c_o), (x,y), (x,y), (x,y), (x,y)
 ;----   (0)
 b0_color:       db 0x34, 0x35
-b0_array:       db -2, 0, -1, 0, 0, 0, 1, 0
-;b0_array_x:     db -2, -1,  0,  1
+b0_array:       db -1, 0, 0, 0, 1, 0, 2, 0
+;b0_array_x:     db -1,  0,  1,  2
 ;b0_array_y:     db  0,  0,  0,  0
 
 ;-

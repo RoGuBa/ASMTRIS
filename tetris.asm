@@ -32,6 +32,46 @@ gameLoop:
         jmp tickLoop
     ret
 
+checkFullLine:
+    ;start check at lowest line
+    mov cx, [t_y_size]
+    checkFullLine_y_loop:
+        dec cx
+        cmp cx, 0
+        jl checkFullLine_end
+        mov bx, [t_x_size]
+        checkFullLine_x_loop:
+            dec bx
+            mov [x_draw], bx
+            mov [y_draw], cx
+            push bx
+            call getBlock
+            pop bx
+            cmp [outW], word 0          ;check if ther is a free block
+            je checkFullLine_y_loop     ;if so check next line
+            cmp bx, 0                   ;else check next block in line
+            jge checkFullLine_x_loop
+            ;push checkFullLine_y_loop
+            call fullLine
+        cmp cx, 0
+        jge checkFullLine_y_loop
+    checkFullLine_end:
+    ret
+
+fullLine:
+    push bx
+    push ax
+    push cx
+    mov ax, [y_draw]
+    mov [debugPrint_char], ax
+    call debugPrint
+    call debugDelay
+    pop cx
+    pop ax
+    pop bx
+
+    ret
+
 check4Move:
     call readKeyboard
     mov ah, byte [key_scan_code]
@@ -225,28 +265,28 @@ moveTetrominoHor:
         ret
 
 moveTetrominoDown:
-    moveTetrominoDown_check:
-        mov ax, 1
-        call visibleTetromino           ;make invisible to not detect self
-        mov cx, 0
-        moveTetrominoDown_check_block:
-            mov [inW], cx
-            call getTetrominoBlockPos
-            inc word [y_draw]   ;check block below
-            call getBlock
-            mov ax, [outW]
-            cmp ax, 0           ;blocked by other block
-            jne moveTetrominoDown_blocked
-            ;cmp ax, 2           ;blocked by border
-            ;je moveTetrominoDown_blocked
+    mov ax, 1
+    call visibleTetromino           ;make invisible to not detect self
+    mov cx, 0
+    moveTetrominoDown_check_block:
+        mov [inW], cx
+        call getTetrominoBlockPos
+        inc word [y_draw]   ;check block below
+        call getBlock
+        mov ax, [outW]
+        cmp ax, 0           ;blocked by other block
+        jne moveTetrominoDown_blocked
+        ;cmp ax, 2           ;blocked by border
+        ;je moveTetrominoDown_blocked
 
-            inc cx
-            cmp cx, 4
-            jb moveTetrominoDown_check_block
-    
+        inc cx
+        cmp cx, 4
+        jb moveTetrominoDown_check_block
+
     moveTetrominoDown_move:
         inc word [tetromino_y]
         call drawTetromino
+        call checkFullLine
         ret
     
     moveTetrominoDown_blocked:

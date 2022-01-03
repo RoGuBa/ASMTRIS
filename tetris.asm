@@ -51,25 +51,23 @@ checkFullLine:
             je checkFullLine_y_loop     ;if so check next line
             cmp bx, 0                   ;else check next block in line
             jge checkFullLine_x_loop
-            push cx
-            call clearFullLine               ;full line if no block is free
-            pop cx
+            jmp clearFullLine           ;full line if no block is free
         cmp cx, 0
         jge checkFullLine_y_loop
     checkFullLine_end:
     ret
 
 clearFullLine:
-    push bx
-    push ax
-    push cx
-    mov ax, [y_draw]
-    mov [debugPrint_char], ax
-    call debugPrint
-    call debugDelay
-    pop cx
-    pop ax
-    pop bx
+    ;push bx
+    ;push ax
+    ;push cx
+    ;mov ax, [y_draw]
+    ;mov [debugPrint_char], ax
+    ;call debugPrint
+    ;call debugDelay
+    ;pop cx
+    ;pop ax
+    ;pop bx
     
     ;clear
     mov ax, 0
@@ -86,8 +84,30 @@ clearFullLine:
         jg clearFullLine_loop
     
     ;move every line above one down
-
-    ret
+    mov cx, [y_draw]
+    moveLineDown_y_loop:
+        dec cx
+        mov [y_draw], cx
+        mov bx, [t_x_size]
+        moveLineDown_x_loop:
+            dec bx
+            mov [x_draw], bx
+            push cx
+            call getColor
+            pop cx
+            inc cx
+            mov [y_draw], cx
+            dec cx
+            push cx
+            call drawBlock
+            pop cx
+            mov [y_draw], cx
+            mov bx, [x_draw]
+            cmp bx, 0
+            jg moveLineDown_x_loop
+        cmp cx, 0
+        jg moveLineDown_y_loop
+    jmp checkFullLine
 
 check4Move:
     call readKeyboard
@@ -222,7 +242,7 @@ readKeyboard:
     jz readKeyboard_no_input
     ;found a key input
     mov byte [key_scan_code], ah
-    call cmovrKeyboardBuffer
+    call clearKeyboardBuffer
     ret
     readKeyboard_no_input:
         mov ah, byte 0
@@ -230,16 +250,16 @@ readKeyboard:
         ;cmp ah, ah                  ;not sure if needed
         ret
 
-cmovrKeyboardBuffer:
+clearKeyboardBuffer:
     mov ah, 0x1
     int 0x16
-    jz cmovrKeyboardBuffer_end
+    jz clearKeyboardBuffer_end
     ;mov [debugPrint_char], al      ;debug print ascii key
     ;call debugPrint
     mov ah, 0x0
     int 0x16
-    jmp cmovrKeyboardBuffer
-    cmovrKeyboardBuffer_end:
+    jmp clearKeyboardBuffer
+    clearKeyboardBuffer_end:
         ret
 
 moveTetrominoHor:
@@ -491,6 +511,26 @@ drawBorder:     ;subroutine to draw border around the game
     
     ret
 
+getColor:       ;x_draw
+                ;y_draw
+                ;ret c_draw_i
+                ;ret c_draw_o
+    call getRealPos
+    mov di, ax
+    mov al, [es:di]
+    cbw
+
+    mov [c_draw_o], ax
+
+    add di, [x_screen]  ;one down
+    add di, 1           ;one to the left
+    mov al, [es:di]
+    cbw
+
+    mov [c_draw_i], ax
+    
+    ret
+
 getBlock:       ;x_draw
                 ;y_draw
                 ;retrun to outW   0->no block 1->block 2->border
@@ -690,7 +730,6 @@ tetromino_y:    dw 3
 tetromino_s:    dw 1
 tetromino_reset_flag:   dw 0
 tetromino_temp_flag:    dw 0
-
 
 key_scan_code:      db 0
 key_move_left:      db 0x4B     ;left arrow

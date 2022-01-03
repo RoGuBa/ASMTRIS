@@ -51,14 +51,15 @@ checkFullLine:
             je checkFullLine_y_loop     ;if so check next line
             cmp bx, 0                   ;else check next block in line
             jge checkFullLine_x_loop
-            ;push checkFullLine_y_loop
-            call fullLine
+            push cx
+            call clearFullLine               ;full line if no block is free
+            pop cx
         cmp cx, 0
         jge checkFullLine_y_loop
     checkFullLine_end:
     ret
 
-fullLine:
+clearFullLine:
     push bx
     push ax
     push cx
@@ -69,6 +70,22 @@ fullLine:
     pop cx
     pop ax
     pop bx
+    
+    ;clear
+    mov ax, 0
+    mov [c_draw_i], ax
+    mov [c_draw_o], ax
+    mov cx, [t_x_size]
+    clearFullLine_loop:
+        dec cx
+        mov [x_draw], cx
+        push cx
+        call drawBlock
+        pop cx
+        cmp cx, 0
+        jg clearFullLine_loop
+    
+    ;move every line above one down
 
     ret
 
@@ -286,12 +303,13 @@ moveTetrominoDown:
     moveTetrominoDown_move:
         inc word [tetromino_y]
         call drawTetromino
-        call checkFullLine
         ret
     
     moveTetrominoDown_blocked:
     mov ax, 0
     call visibleTetromino               ;make visible
+    ;check full line
+    call checkFullLine
     ;spawn new
     mov [tetromino_x], word 4
     mov [tetromino_y], word 0
@@ -359,7 +377,7 @@ drawTetromino:
     mov ax, 0
     cmp [tetromino_reset_flag], ax      ;check for reset_flag
     je drawTetromino_color
-    mov [tetromino_reset_flag], ax
+    mov [tetromino_reset_flag], ax      ;reset flag to 0
     mov [c_draw_i], ax   ;more efficent to disable border draw
     mov [c_draw_o], ax
     add si, 2

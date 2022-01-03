@@ -72,7 +72,31 @@ check4Move:
         ;mov [move_n], ax
         call moveTetrominoDown
         ret
+
+        ;TODO:
+        ;combine left and right rotate
     c4M_rotate_left:
+        ;copy rotated to temp
+        mov si, tetromino_current_blocks
+        add si, 2               ;skip color
+        mov di, tetromino_temp_blocks
+        mov cx, 4
+        c4M_rotate_left_loop:
+            
+            mov al, byte [si]
+            neg al
+            inc si
+            mov bl, byte [si]
+            inc si
+    
+            mov byte [di], bl
+            inc di
+            mov byte [di], al
+            inc di
+
+            dec cx
+            jnz c4M_rotate_left_loop
+            jmp c4M_rotate_check
         ret
     c4M_rotate_right:
         ;copy rotated to temp
@@ -80,7 +104,7 @@ check4Move:
         add si, 2               ;skip color
         mov di, tetromino_temp_blocks
         mov cx, 4
-        c4m_rotate_right_loop0:
+        c4M_rotate_right_loop0:
             
             mov bl, byte [si]        ;x
             inc si
@@ -94,44 +118,45 @@ check4Move:
             inc di
             
             dec cx
-            jnz c4m_rotate_right_loop0
+            jnz c4M_rotate_right_loop0
+            jmp c4M_rotate_check
         
-        ;make invisible
-        mov ax, 1
-        call visibleTetromino
-        ;check for collision
-        mov [tetromino_temp_flag], word 1      ;enable temp flag
-        ;mov si, tetromino_temp_blocks
-        mov cx, 0
-        c4M_rotate_right_loop1_0:
-            mov [inW], cx
-            call getTetrominoBlockPos
-            call getBlock
+c4M_rotate_check:
+    ;make invisible
+    mov ax, 1
+    call visibleTetromino
+    ;check for collision
+    mov [tetromino_temp_flag], word 1      ;enable temp flag  
+    mov cx, 0
+    c4M_rotate_loop0:
+        mov [inW], cx
+        call getTetrominoBlockPos
+        call getBlock
 
-            cmp [outW], word 0
-            jne c4M_rotate_right_exit
-            inc cx
-            cmp cx, 4
-            jb c4M_rotate_right_loop1_0
-            
-            ;no collision - write temp in current
-            mov si, tetromino_temp_blocks
-            mov di, tetromino_current_blocks
+        cmp [outW], word 0
+        jne c4M_rotate_exit
+        inc cx
+        cmp cx, 4
+        jb c4M_rotate_loop0
+        
+        ;no collision - write temp in current
+        mov si, tetromino_temp_blocks
+        mov di, tetromino_current_blocks
+        add di, 2
+        mov cx, 4
+        c4M_rotate_loop1:
+            mov ax, word [si]
+            mov word [di], ax
+            add si, 2
             add di, 2
-            mov cx, 4
-            c4M_rotate_right_loop1_1:
-                mov ax, word [si]
-                mov word [di], ax
-                add si, 2
-                add di, 2
-                dec cx
-                jnz c4M_rotate_right_loop1_1
-        c4M_rotate_right_exit:
-            ;make visible
-            mov ax, 0
-            call visibleTetromino
-            mov [tetromino_temp_flag], word 0      ;disable temp flag
-            ret
+            dec cx
+            jnz c4M_rotate_loop1
+    c4M_rotate_exit:
+        ;make visible
+        mov ax, 0
+        call visibleTetromino
+        mov [tetromino_temp_flag], word 0      ;disable temp flag
+        ret
 
 
 readKeyboard:
@@ -604,7 +629,7 @@ border_flag:    dw 0
 
 tetromino_x:    dw 4
 tetromino_y:    dw 3
-tetromino_s:    dw 0
+tetromino_s:    dw 1
 tetromino_reset_flag:   dw 0
 tetromino_temp_flag:    dw 0
 

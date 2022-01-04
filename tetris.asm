@@ -175,8 +175,7 @@ check4Move:
             mov byte [di], al
             inc di
 
-            dec cx
-            jnz c4M_rotate_left_loop
+            loop c4M_rotate_left_loop
             jmp c4M_rotate_check
         ret
     c4M_rotate_right:
@@ -198,8 +197,7 @@ check4Move:
             mov byte [di], bl
             inc di
             
-            dec cx
-            jnz c4M_rotate_right_loop0
+            loop c4M_rotate_right_loop0
             jmp c4M_rotate_check
         
 c4M_rotate_check:
@@ -230,8 +228,7 @@ c4M_rotate_check:
             mov word [di], ax
             add si, 2
             add di, 2
-            dec cx
-            jnz c4M_rotate_loop1
+            loop c4M_rotate_loop1
     c4M_rotate_exit:
         ;make visible
         mov ax, 0
@@ -375,18 +372,18 @@ getTetrominoBlockPos:       ;inW -> block id (0-3)
     ret
 
 getRandomTetromino:
-    mov di, [off_timer]
-    mov al, [fs:di]
-    and al, [timer_pattern_0]
-    cmp al, 7
+    mov di, [off_timer]         ;
+    mov al, [fs:di]             ;
+    and al, [timer_pattern_0]   ;get last 3 bits of system tick counter
+    cmp al, 7                   ;if last 3 = 0b111 get next 3 bits
     je getRandomTetromino_next
         mov [tetromino_s], byte al
         jmp getRandomTetromino_end
     getRandomTetromino_next:
-        mov al, [fs:di]
-        and al, [timer_pattern_1]
-        shr al, 3                   ;shift 3 to the right
-        cmp al, 7
+        mov al, [fs:di]             ;
+        and al, [timer_pattern_1]   ;get next 3 bits
+        shr al, 3                   ;shift 3 to the right -> nuber 0-7
+        cmp al, 7                   ;if last 3 = 0b111 -> spawn 0 block
         je getRandomTetromino_unlucky
             mov [tetromino_s], byte al
             jmp getRandomTetromino_end
@@ -399,22 +396,20 @@ selectTetromino:
     call getRandomTetromino
     mov si, b_array_start   ;set pointer to array
     mov ax, 10
-    xor bx, bx
-    mov bl, byte [tetromino_s]      ;
-    mul bx                          ;
+    mov bl, [tetromino_s]           ;
+    mul bl                          ;
     add si, ax                      ;shift pointer to selected tetromino
     
     ;copy to current_block
-    mov cx, 5
-    ;shr ax, 1                 ;div array_size by 2 (1 word = 2 byte)
-    ;mov cx, ax
-    mov di, tetromino_current_blocks    ;load mem adress
+    mov cx, [b_array_size]
+    shr cx, 1                               ;div array_size by 2 (1 word = 2 byte)
+    mov di, tetromino_current_blocks        ;load mem adress
     
     selectTetromino_loop:
-        mov ax, word [si]                    ;read 2 byte from [si]
-        mov word [di], ax                    ;write it to [di]
-        add si, 2                       ;inc si by 2
-        add di, 2                       ;inc di by 2
+        mov ax, word [si]                   ;read 2 byte from [si]
+        mov word [di], ax                   ;write it to [di]
+        add si, 2                           ;inc si by 2
+        add di, 2                           ;inc di by 2
         dec cx
         jnz selectTetromino_loop
     ret 
@@ -733,7 +728,6 @@ x_screen:   dw 320
 x_start:    dw 120 
 y_start:    dw 20
 t_size:     dw 8
-;t_size_m1:  dw 7
 t_x_size:   dw 10
 t_y_size:   dw 20
 
@@ -744,8 +738,7 @@ timer_pattern_1:    db 0b00111000
 tick_time:      dw 10000
 tick_time_def:  dw 10000
 
-move_n:     dw 50
-move_n_def: dw 50
+move_n:     dw 20
 
 border_color_o: dw 18
 border_color_i: dw 22

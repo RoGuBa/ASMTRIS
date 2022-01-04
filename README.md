@@ -5,9 +5,9 @@ Tetris written fully in x86 Assembly
 Should be bootable on every x86 processor
 
 ### Screenshot
-![Screenshot](docs/assets/screenshot.png)
+![Screenshot](/docs/images/screenshot.png?raw=true)
 
-### More Info
+### More info
 
 16-bit Real Mode [OS_DEV](https://wiki.osdev.org/Real_Mode)
 

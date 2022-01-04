@@ -3,6 +3,10 @@ section .text
 
 mov es, [off_screen]
 
+;timer mem adress
+mov ax, 0x0
+mov fs, ax
+
 call drawBorder
 
 call selectTetromino
@@ -370,12 +374,35 @@ getTetrominoBlockPos:       ;inW -> block id (0-3)
     mov [y_draw], ax
     ret
 
+getRandomTetromino:
+    mov di, [off_timer]
+    mov al, [fs:di]
+    and al, [timer_pattern_0]
+    cmp al, 7
+    je getRandomTetromino_next
+        mov [tetromino_s], byte al
+        jmp getRandomTetromino_end
+    getRandomTetromino_next:
+        mov al, [fs:di]
+        and al, [timer_pattern_1]
+        shr al, 3                   ;shift 3 to the right
+        cmp al, 7
+        je getRandomTetromino_unlucky
+            mov [tetromino_s], byte al
+            jmp getRandomTetromino_end
+        getRandomTetromino_unlucky:
+            mov [tetromino_s], byte 0
+    getRandomTetromino_end:
+        ret
+
 selectTetromino:
+    call getRandomTetromino
     mov si, b_array_start   ;set pointer to array
     mov ax, 10
-    mov bx, [tetromino_s]   ;
-    mul bx                  ;
-    add si, ax              ;shift pointer to selected tetromino
+    xor bx, bx
+    mov bl, byte [tetromino_s]      ;
+    mul bx                          ;
+    add si, ax                      ;shift pointer to selected tetromino
     
     ;copy to current_block
     mov cx, 5
@@ -710,6 +737,10 @@ t_size:     dw 8
 t_x_size:   dw 10
 t_y_size:   dw 20
 
+off_timer:  dw 0x46C
+timer_pattern_0:    db 0b00000111
+timer_pattern_1:    db 0b00111000
+
 tick_time:      dw 10000
 tick_time_def:  dw 10000
 
@@ -727,7 +758,7 @@ border_flag:    dw 0
 
 tetromino_x:    dw 4
 tetromino_y:    dw 3
-tetromino_s:    dw 1
+tetromino_s:    db 1
 tetromino_reset_flag:   dw 0
 tetromino_temp_flag:    dw 0
 

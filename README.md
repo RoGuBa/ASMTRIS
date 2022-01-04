@@ -4,6 +4,8 @@ Tetris written fully in x86 Assembly
 
 Should be bootable on every x86 processor
 
+### Screenshot
+![Screenshot](docs/assets/screenshot.png)
 
 ### More Info
 

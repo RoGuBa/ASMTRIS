@@ -774,11 +774,11 @@ t_y_size:   dw 20
 off_timer:  dw 0x46C
 bit_mask_timer: db 0b00000111
 
-tick_time:      dw 10000
 tick_time_def:  dw 10000
+tick_time:      dw 10000
 
-move_n_def: dw 10
-move_n:     dw 10
+move_n_def: dw 20
+move_n:     dw 20
 
 border_color_o: dw 18
 border_color_i: dw 22

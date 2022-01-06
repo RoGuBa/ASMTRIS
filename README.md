@@ -1,6 +1,6 @@
-# TETRIX-x86-asm
+# ASMTRIS
 
-Tetris written fully in x86 Assembly
+Tetromino game written fully in x86 Assembly
 
 Should be bootable on every x86 processor
 
@@ -9,7 +9,7 @@ Should be bootable on every x86 processor
 
 ### More info
 
-16-bit Real Mode [OS_DEV](https://wiki.osdev.org/Real_Mode)
+16-bit Real Mode [OS DEV](https://wiki.osdev.org/Real_Mode)
 
 I/0: BIOS [This Website helped a lot](http://vitaly_filatov.tripod.com/ng/asm/asm_001.html)
 

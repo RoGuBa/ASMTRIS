@@ -143,8 +143,6 @@ check4Move:
         call moveTetrominoDown
         ret
 
-        ;TODO:
-        ;combine left and right rotate
     c4M_rotate:
         ;copy rotated to temp
         mov si, tetromino_current_blocks
@@ -170,7 +168,7 @@ check4Move:
             inc di
             
             loop c4M_rotate_loop
-            jmp c4M_rotate_check
+        jmp c4M_rotate_check
 
 c4M_rotate_check:
     ;make invisible
@@ -236,10 +234,8 @@ clearKeyboardBuffer:
         ret
 
 moveTetrominoHor:
-
     mov ax, 1
-    call visibleTetromino
-    
+    call visibleTetromino 
     mov cx, 0
     moveTetrominoHor_check_block:
         mov [inW], cx

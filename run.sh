@@ -12,7 +12,7 @@ helpFunc() {
 }
 
 build() {
-    nasm -f bin tetris.asm -o tetris.bin
+    nasm -f bin asmtris.asm -o asmtris.bin
     nasm -f bin stage2.asm -o stage2.bin
     nasm -f bin boot.asm -o boot.bin
 }
@@ -20,16 +20,16 @@ build() {
 buildIso() {
     build
 
-    dd if=/dev/zero of=tetris.img bs=1024 count=1440 status=none
-    dd if=boot.bin of=tetris.img conv=notrunc status=none
+    dd if=/dev/zero of=asmtris.img bs=1024 count=1440 status=none
+    dd if=boot.bin of=asmtris.img conv=notrunc status=none
     
     mkdir iso
-    cp tetris.img iso/
-    genisoimage -quiet -V 'TETRIS' -o tetris.iso \
-        -b tetris.img iso/
+    cp asmtris.img iso/
+    genisoimage -quiet -V 'ASMTRIS' -o asmtris.iso \
+        -b asmtris.img iso/
     rm -r iso
     
-    echo "tetris.iso was generated"
+    echo "asmtris.iso was generated"
 }
 
 writeToUsb() {
@@ -41,7 +41,7 @@ writeToUsb() {
 #        sudo parted --script $usbDrive \
 #            mklabel gpt \
 #            mkpart primary fat32 1MiB 100%
-#        sudo dd if=tetris.iso of=$usbDrive bs=1024 conv=notrunc \
+#        sudo dd if=asmtris.iso of=$usbDrive bs=1024 conv=notrunc \
 #            status=progress && sync
 #        echo "usb-stick is ready"
 #    else

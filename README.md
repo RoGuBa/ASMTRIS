@@ -11,7 +11,7 @@ Should be bootable on every x86 processor
 
 16-bit Real Mode [OS DEV](https://wiki.osdev.org/Real_Mode)
 
-I/0: BIOS [This Website helped a lot](http://vitaly_filatov.tripod.com/ng/asm/asm_001.html)
+I/0: BIOS [This website helped a lot](http://vitaly_filatov.tripod.com/ng/asm/asm_001.html)
 
 Video mode: Mode 13h [Wikipedia](https://en.wikipedia.org/wiki/Mode_13h)
 

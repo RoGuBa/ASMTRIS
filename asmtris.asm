@@ -1,4 +1,5 @@
 [bits 16]
+
 section .text
 
 mov es, [off_screen]
@@ -7,16 +8,63 @@ mov es, [off_screen]
 mov ax, 0x0
 mov fs, ax
 
+start:
+
+call init
+
 call drawBorder
 
-call selectTetromino
-call drawTetromino
+call debugDelay
 
-;call debugDelay
+call spawnTetromino
+
+mov ax, [move_n_def]
+mov [move_n], ax
 
 call gameLoop
 
 jmp end
+
+init:    
+    ;enter video mode 13h (clear screen)
+    mov ah, 0x0
+    mov al, 0x13
+    int 0x10
+    
+    ;disable cursor blinking
+    mov ax, 0x1003
+    mov bx, 0
+    mov bh, 0
+    int 0x10
+    
+    ;move cursor
+    mov ah, 0x2
+    mov bh, 0
+    mov dh, 1
+    mov dl, 1
+    int 0x10
+
+    ;write ASMTRIS
+    mov ah, 0xE     ;tty mode
+    mov bl, 0x5     ;purple
+
+    mov bl, 0x5 ;purple
+    mov al, 'A'
+    int 0x10
+    mov al, 'S'
+    int 0x10
+    mov al, 'M'
+    int 0x10
+    mov al, 'T'
+    int 0x10
+    mov al, 'R'
+    int 0x10
+    mov al, 'I'
+    int 0x10
+    mov al, 'S'
+    int 0x10
+    
+    ret
 
 gameLoop:
     tickLoop_start:
@@ -27,6 +75,9 @@ gameLoop:
         mov dx, [tick_time]
         int 0x15
         push bx
+        ;keyboard input
+        call readKeyboard
+        call check4AdminKeys
         call check4Move
         pop bx
         dec bx
@@ -35,6 +86,22 @@ gameLoop:
         jz moveTetrominoDown
         jmp tickLoop
     ret
+
+check4AdminKeys:
+    mov ah, byte [key_scan_code]
+
+    cmp ah, byte [key_restart]
+    je c4A_restart
+
+    ret
+    c4A_restart:
+        ;clear return and bx from loop form stack
+        pop ax
+        pop ax
+
+        ;restart
+        jmp start
+
 
 checkFullLine:
     ;start check at lowest line
@@ -103,7 +170,6 @@ clearFullLine:
     jmp checkFullLine
 
 check4Move:
-    call readKeyboard
     mov ah, byte [key_scan_code]
     
     ;cmp ah, byte [key_move_down]
@@ -206,7 +272,6 @@ c4M_rotate_check:
         mov [tetromino_temp_flag], word 0      ;disable temp flag
         ret
 
-
 readKeyboard:
     mov ah, 0x1
     int 0x16
@@ -300,10 +365,7 @@ moveTetrominoDown:
     ;check full line
     call checkFullLine
     ;spawn new
-    mov [tetromino_x], word 4
-    mov [tetromino_y], word 0
-    call selectTetromino
-    call drawTetromino
+    call spawnTetromino
     ret
 
 visibleTetromino:           ;ax 1->hidden 0->shown
@@ -359,6 +421,15 @@ getRandomTetromino:
             mov [tetromino_s], byte 0
     getRandomTetromino_end:
         ret
+
+spawnTetromino:
+    mov ax, [tetromino_x_start]
+    mov [tetromino_x], ax
+    mov ax, [tetromino_y_start]
+    mov [tetromino_y], ax
+    call selectTetromino
+    call drawTetromino
+    ret 
 
 selectTetromino:
     call getRandomTetromino
@@ -693,6 +764,7 @@ outW:       dw 0
 
 off_screen: dw 0xA000
 x_screen:   dw 320
+y_screen:   dw 200
 x_start:    dw 120 
 y_start:    dw 20
 t_size:     dw 8
@@ -705,7 +777,8 @@ bit_mask_timer: db 0b00000111
 tick_time:      dw 10000
 tick_time_def:  dw 10000
 
-move_n:     dw 20
+move_n_def: dw 10
+move_n:     dw 10
 
 border_color_o: dw 18
 border_color_i: dw 22
@@ -716,8 +789,10 @@ c_draw_i:       dw 0
 c_draw_o:       dw 0
 border_flag:    dw 0
 
+tetromino_x_start:  dw 4
+tetromino_y_start:  dw 0
 tetromino_x:    dw 4
-tetromino_y:    dw 3
+tetromino_y:    dw 0
 tetromino_s:    db 1
 tetromino_reset_flag:   dw 0
 tetromino_temp_flag:    dw 0
@@ -728,6 +803,7 @@ key_move_right:     db 0x4D     ;right arrow
 key_move_down:      db 0x50     ;down arrow
 key_rotate_right:   db 0x20     ;d
 key_rotate_left:    db 0x1E     ;a
+key_restart:        db 0x13     ;r
 
 
 tetromino_move_dir: db 0        ;-1 -> left  1 -> right

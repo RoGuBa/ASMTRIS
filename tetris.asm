@@ -62,17 +62,6 @@ checkFullLine:
     ret
 
 clearFullLine:
-    ;push bx
-    ;push ax
-    ;push cx
-    ;mov ax, [y_draw]
-    ;mov [debugPrint_char], ax
-    ;call debugPrint
-    ;call debugDelay
-    ;pop cx
-    ;pop ax
-    ;pop bx
-    
     ;clear
     mov ax, 0
     mov [c_draw_i], ax
@@ -128,9 +117,9 @@ check4Move:
         cmp ah, byte [key_move_down]
         je c4M_down
         cmp ah, byte [key_rotate_left]
-        je c4M_rotate_left
+        je c4M_rotate
         cmp ah, byte [key_rotate_right]
-        je c4M_rotate_right
+        je c4M_rotate
         ret
     
     ;c4M_down_reset:
@@ -156,50 +145,33 @@ check4Move:
 
         ;TODO:
         ;combine left and right rotate
-    c4M_rotate_left:
+    c4M_rotate:
         ;copy rotated to temp
         mov si, tetromino_current_blocks
         add si, 2               ;skip color
         mov di, tetromino_temp_blocks
         mov cx, 4
-        c4M_rotate_left_loop:
+        c4M_rotate_loop:
+            mov al, byte [si]       ;x
+            inc si
+            mov bl, byte [si]       ;y
+            inc si
+            cmp ah, byte [key_rotate_left]
+            je c4M_rotate_left
+                neg bl
+                jmp c4M_rotate_right
+            c4M_rotate_left:
+                neg al
+            c4M_rotate_right:
             
-            mov al, byte [si]
-            neg al
-            inc si
-            mov bl, byte [si]
-            inc si
-    
             mov byte [di], bl
             inc di
             mov byte [di], al
             inc di
+            
+            loop c4M_rotate_loop
+            jmp c4M_rotate_check
 
-            loop c4M_rotate_left_loop
-            jmp c4M_rotate_check
-        ret
-    c4M_rotate_right:
-        ;copy rotated to temp
-        mov si, tetromino_current_blocks
-        add si, 2               ;skip color
-        mov di, tetromino_temp_blocks
-        mov cx, 4
-        c4M_rotate_right_loop0:
-            
-            mov bl, byte [si]        ;x
-            inc si
-            mov al, byte [si]        ;y
-            neg al
-            inc si
-            
-            mov byte [di], al
-            inc di
-            mov byte [di], bl
-            inc di
-            
-            loop c4M_rotate_right_loop0
-            jmp c4M_rotate_check
-        
 c4M_rotate_check:
     ;make invisible
     mov ax, 1
@@ -374,15 +346,15 @@ getTetrominoBlockPos:       ;inW -> block id (0-3)
 getRandomTetromino:
     mov di, [off_timer]         ;
     mov al, [fs:di]             ;
-    and al, [timer_pattern_0]   ;get last 3 bits of system tick counter
+    and al, [bit_mask_timer]    ;get last 3 bits of system tick counter
     cmp al, 7                   ;if last 3 = 0b111 get next 3 bits
     je getRandomTetromino_next
         mov [tetromino_s], byte al
         jmp getRandomTetromino_end
     getRandomTetromino_next:
         mov al, [fs:di]             ;
-        and al, [timer_pattern_1]   ;get next 3 bits
-        shr al, 3                   ;shift 3 to the right -> nuber 0-7
+        shr al, 3                   ;
+        and al, [bit_mask_timer]    ;shift next 3 to the right -> nuber 0-7
         cmp al, 7                   ;if last 3 = 0b111 -> spawn 0 block
         je getRandomTetromino_unlucky
             mov [tetromino_s], byte al
@@ -732,8 +704,7 @@ t_x_size:   dw 10
 t_y_size:   dw 20
 
 off_timer:  dw 0x46C
-timer_pattern_0:    db 0b00000111
-timer_pattern_1:    db 0b00111000
+bit_mask_timer: db 0b00000111
 
 tick_time:      dw 10000
 tick_time_def:  dw 10000

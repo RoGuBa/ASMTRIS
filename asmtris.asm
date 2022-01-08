@@ -68,23 +68,22 @@ init:
 
 gameLoop:
     tickLoop_start:
-    mov bx, [move_n]
+    mov cx, [move_n]
     tickLoop:
+        push cx
         mov ah, 0x86
         mov cx, 0
         mov dx, [tick_time]
         int 0x15
-        push bx
         ;keyboard input
         call readKeyboard
         call check4AdminKeys
         call check4Move
-        pop bx
-        dec bx
-        test bx, bx
-        push tickLoop_start
-        jz moveTetrominoDown
-        jmp tickLoop
+        pop cx
+        dec cx
+        loop tickLoop
+        call moveTetrominoDown
+        jmp tickLoop_start
     ret
 
 check4AdminKeys:
@@ -402,25 +401,14 @@ getTetrominoBlockPos:       ;inW -> block id (0-3)
     ret
 
 getRandomTetromino:
-    mov di, [off_timer]         ;
-    mov al, [fs:di]             ;
-    and al, [bit_mask_timer]    ;get last 3 bits of system tick counter
-    cmp al, 7                   ;if last 3 = 0b111 get next 3 bits
-    je getRandomTetromino_next
-        mov [tetromino_s], byte al
-        jmp getRandomTetromino_end
-    getRandomTetromino_next:
-        mov al, [fs:di]             ;
-        shr al, 3                   ;
-        and al, [bit_mask_timer]    ;shift next 3 to the right -> nuber 0-7
-        cmp al, 7                   ;if last 3 = 0b111 -> spawn 0 block
-        je getRandomTetromino_unlucky
-            mov [tetromino_s], byte al
-            jmp getRandomTetromino_end
-        getRandomTetromino_unlucky:
-            mov [tetromino_s], byte 0
-    getRandomTetromino_end:
-        ret
+    mov di, [off_timer]
+    xor ax, ax                  ;clear ax
+    mov ax, [fs:di]             ;write 2bytes of timer counter into ax
+    xor dx, dx                  ;clear dx (needed for %)
+    mov bx, 7                   ;
+    div bx                      ;div by 7
+    mov [tetromino_s], byte dl  ;write remainder into [tetromino_s]
+    ret
 
 spawnTetromino:
     mov ax, [tetromino_x_start]
@@ -777,8 +765,8 @@ bit_mask_timer: db 0b00000111
 tick_time_def:  dw 10000
 tick_time:      dw 10000
 
-move_n_def: dw 20
-move_n:     dw 20
+move_n_def: dw 40
+move_n:     dw 40
 
 border_color_o: dw 18
 border_color_i: dw 22

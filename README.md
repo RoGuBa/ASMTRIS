@@ -9,6 +9,8 @@ Should be bootable on every x86 processor
 
 ### More info
 
+x86 assembly language [Intel Developer’s Manuals](https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html)
+
 16-bit Real Mode [OS DEV](https://wiki.osdev.org/Real_Mode)
 
 I/0: BIOS [This website helped a lot](http://vitaly_filatov.tripod.com/ng/asm/asm_001.html)

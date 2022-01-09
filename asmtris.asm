@@ -88,16 +88,13 @@ gameLoop:
 
 check4AdminKeys:
     mov ah, byte [key_scan_code]
-
     cmp ah, byte [key_restart]
     je c4A_restart
-
     ret
     c4A_restart:
         ;clear return and bx from loop form stack
         pop ax
         pop ax
-
         ;restart
         jmp start
 
@@ -185,6 +182,8 @@ check4Move:
         je c4M_rotate
         cmp ah, byte [key_rotate_right]
         je c4M_rotate
+        cmp ah, byte [key_rotate_right_0]
+        je c4M_rotate
         ret
     
     ;c4M_down_reset:
@@ -209,31 +208,37 @@ check4Move:
         ret
 
     c4M_rotate:
-        ;copy rotated to temp
-        mov si, tetromino_current_blocks
-        add si, 2               ;skip color
-        mov di, tetromino_temp_blocks
-        mov cx, 4
-        c4M_rotate_loop:
-            mov al, byte [si]       ;x
-            inc si
-            mov bl, byte [si]       ;y
-            inc si
-            cmp ah, byte [key_rotate_left]
-            je c4M_rotate_left
-                neg bl
-                jmp c4M_rotate_right
-            c4M_rotate_left:
-                neg al
-            c4M_rotate_right:
-            
-            mov byte [di], bl
-            inc di
-            mov byte [di], al
-            inc di
-            
-            loop c4M_rotate_loop
-        jmp c4M_rotate_check
+        ;check rotate flag
+        mov ax, [tetromino_rotate_flag]
+        cmp ax, 2
+        jb c4M_rotate_start     ;I -> [tetromino_rotate_flag] = 1 (todo)
+        ret                     ;[tetromino_roate_flag] = 2
+        
+        c4M_rotate_start:
+            ;copy rotated to temp
+            mov si, tetromino_current_blocks
+            add si, 2               ;skip color
+            mov di, tetromino_temp_blocks
+            mov cx, 4
+            c4M_rotate_loop:
+                mov al, byte [si]       ;x
+                inc si
+                mov bl, byte [si]       ;y
+                inc si
+                cmp ah, byte [key_rotate_left]
+                je c4M_rotate_left
+                    neg bl
+                    jmp c4M_rotate_right
+                c4M_rotate_left:
+                    neg al
+                c4M_rotate_right:
+                mov byte [di], bl
+                inc di
+                mov byte [di], al
+                inc di
+                
+                loop c4M_rotate_loop
+            jmp c4M_rotate_check
 
 c4M_rotate_check:
     ;make invisible
@@ -282,7 +287,6 @@ readKeyboard:
     readKeyboard_no_input:
         mov ah, byte 0
         mov byte [key_scan_code], ah
-        ;cmp ah, ah                  ;not sure if needed
         ret
 
 clearKeyboardBuffer:
@@ -408,7 +412,21 @@ getRandomTetromino:
     mov bx, 7                   ;
     div bx                      ;div by 7
     mov [tetromino_s], byte dl  ;write remainder into [tetromino_s]
-    ret
+    cmp dl, 0
+    je getRandomTetrominoIRotation
+    cmp dl, 3
+    je getRandomTetrominoDisableRotation
+    xor ax, ax                  ;normal rotation
+    jmp getRandomTetrominoEnd
+    getRandomTetrominoIRotation:
+        mov ax, 1               ;rotation for I tetromino
+        jmp getRandomTetrominoEnd
+    getRandomTetrominoDisableRotation:
+        mov ax, 2               ;no rotation
+        jmp getRandomTetrominoEnd
+    getRandomTetrominoEnd:
+        mov [tetromino_rotate_flag], ax
+        ret
 
 spawnTetromino:
     mov ax, [tetromino_x_start]
@@ -421,7 +439,7 @@ spawnTetromino:
 
 selectTetromino:
     call getRandomTetromino
-    mov si, b_array_start   ;set pointer to array
+    mov si, b_array_start           ;set pointer to array
     mov ax, 10
     mov bl, [tetromino_s]           ;
     mul bl                          ;
@@ -784,12 +802,14 @@ tetromino_y:    dw 0
 tetromino_s:    db 1
 tetromino_reset_flag:   dw 0
 tetromino_temp_flag:    dw 0
+tetromino_rotate_flag:   dw 0
 
 key_scan_code:      db 0
 key_move_left:      db 0x4B     ;left arrow
 key_move_right:     db 0x4D     ;right arrow
 key_move_down:      db 0x50     ;down arrow
 key_rotate_right:   db 0x20     ;d
+key_rotate_right_0: db 0x48     ;up arrow
 key_rotate_left:    db 0x1E     ;a
 key_restart:        db 0x13     ;r
 

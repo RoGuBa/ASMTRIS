@@ -13,6 +13,7 @@ start:
 call init
 
 call drawBorder
+call drawBackground
 
 call debugDelay
 
@@ -103,65 +104,68 @@ checkFullLine:
     ;start check at lowest line
     mov cx, [t_y_size]
     checkFullLine_y_loop:
-        dec cx
-        cmp cx, 0
+        dec cl
+        cmp cl, 0
         jl checkFullLine_end
-        mov bx, [t_x_size]
+        mov bl, [t_x_size]
         checkFullLine_x_loop:
-            dec bx
-            mov [x_draw], bx
-            mov [y_draw], cx
+            dec bl
+            mov [x_draw], bl
+            mov [y_draw], cl
             push bx
             call getBlock
             pop bx
             cmp [outW], word 0          ;check if ther is a free block
             je checkFullLine_y_loop     ;if so check next line
-            cmp bx, 0                   ;else check next block in line
+            cmp bl, 0                   ;else check next block in line
             jge checkFullLine_x_loop
             jmp clearFullLine           ;full line if no block is free
-        cmp cx, 0
+        cmp cl, 0
         jge checkFullLine_y_loop
     checkFullLine_end:
     ret
 
 clearFullLine:
     ;clear
-    mov ax, 0
+    mov ax, [background_color]
     mov [c_draw_i], ax
     mov [c_draw_o], ax
-    mov cx, [t_x_size]
+    xor cx, cx
+    mov cl, [t_x_size]
     clearFullLine_loop:
-        dec cx
-        mov [x_draw], cx
+        dec cl
+        mov [x_draw], cl
         push cx
         call drawBlock
         pop cx
-        cmp cx, 0
+        cmp cl, 0
         jg clearFullLine_loop
     
     ;move every line above one down
-    mov cx, [y_draw]
+    xor cx, cx
+    xor bx, bx
+    mov cl, [y_draw]
     moveLineDown_y_loop:
-        dec cx
-        mov [y_draw], cx
-        mov bx, [t_x_size]
+        dec cl
+        mov [y_draw], cl
+        mov bl, [t_x_size]
         moveLineDown_x_loop:
-            dec bx
-            mov [x_draw], bx
+            dec bl
+            mov [x_draw], bl
             push cx
             call getColor
             pop cx
-            inc cx
-            mov [y_draw], cx
-            dec cx
+            inc cl
+            mov [y_draw], cl
+            dec cl
             push cx
             call drawBlock
             pop cx
-            mov [y_draw], cx
-            mov bx, [x_draw]
-            cmp bx, 0
+            mov [y_draw], cl
+            mov bl, [x_draw]
+            cmp bl, 0
             jg moveLineDown_x_loop
-        cmp cx, 0
+        cmp cl, 0
         jg moveLineDown_y_loop
     jmp checkFullLine
 
@@ -184,19 +188,77 @@ check4Move:
         je c4M_rotate
         cmp ah, byte [key_rotate_right_0]
         je c4M_rotate
+        cmp ah, byte [key_hold]
+        je c4M_hold
         ret
     
     ;c4M_down_reset:
     ;    mov cx, [move_n_def]
     ;    mov [move_n], cx
     ;    jmp c4M_press
+    
+    c4M_hold:
+        cmp [hold_used_flag], byte 1
+        je c4M_hold_skip
+        
+        call drawHoldTetromino
+        mov [hold_used_flag], byte 1        ;set hold used for this block
+        
+        mov ax, 1
+        call visibleTetromino               ;make invisible
+        
+        mov si, hold_tetromino_blocks
+        mov di, tetromino_current_blocks
+        
+        mov cx, [b_array_size]
+        shr cx, 1               ;div 2
+        
+        c4M_hold_loop:
+            mov ax, [si]
+            mov bx, [di]
+
+            mov [di], ax
+            mov [si], bx
+
+            add si, 2
+            add di, 2
+        loop c4M_hold_loop
+        
+        call drawHoldTetromino
+         
+        mov ax, [tetromino_rotate_flag]         ;copy rotate flag
+        mov bx, [hold_tetromino_rotate_flag]
+        mov [hold_tetromino_rotate_flag], ax
+        mov [tetromino_rotate_flag], bx
+
+        cmp byte [hold_full_flag], byte 0
+        je c4M_hold_new
+        
+        mov al, [tetromino_x_start]
+        mov [tetromino_x], al
+        mov al, [tetromino_y_start]
+        mov [tetromino_y], al
+
+        mov byte [hold_full_flag], byte 1
+        mov ax, 0
+        call visibleTetromino
+               
+        ret
+        c4M_hold_new:
+        mov byte [hold_full_flag], byte 1
+        call spawnTetromino
+        mov [hold_used_flag], byte 1
+        ret
+
+        c4M_hold_skip:
+        ret
 
     c4M_left:
-        mov [tetromino_move_dir], byte -1
+        mov [tetromino_move_dir], word 1
         call moveTetrominoHor
         ret
     c4M_right:
-        mov [tetromino_move_dir], byte 1
+        mov [tetromino_move_dir], word 0
         call moveTetrominoHor
         ret
     c4M_down:
@@ -246,7 +308,7 @@ c4M_rotate_check:
     call visibleTetromino
     ;check for collision
     mov [tetromino_temp_flag], word 1      ;enable temp flag  
-    mov cx, 0
+    mov cx, 4
     c4M_rotate_loop0:
         mov [inW], cx
         call getTetrominoBlockPos
@@ -254,9 +316,7 @@ c4M_rotate_check:
 
         cmp [outW], word 0
         jne c4M_rotate_exit
-        inc cx
-        cmp cx, 4
-        jb c4M_rotate_loop0
+        loop c4M_rotate_loop0
         
         ;no collision - write temp in current
         mov si, tetromino_temp_blocks
@@ -304,32 +364,35 @@ clearKeyboardBuffer:
 moveTetrominoHor:
     mov ax, 1
     call visibleTetromino 
-    mov cx, 0
+    mov cx, 4
     moveTetrominoHor_check_block:
         mov [inW], cx
         push cx
         call getTetrominoBlockPos
+        mov ax, [tetromino_move_dir]
+        cmp ax, 1
+        je moveTetrominoHor_left
+            add [x_draw], byte 2
+        moveTetrominoHor_left:
+            sub [x_draw], byte 1
+
         pop cx
-        mov al, [tetromino_move_dir]
-        cbw
-        add word [x_draw], ax       ;might check for pos / neg
-        push cx
         call getBlock
-        pop cx
         mov ax, [outW]
         cmp ax, 1
         je moveTetrominoHor_blocked
         cmp ax, 2
         je moveTetrominoHor_blocked
 
-        inc cx
-        cmp cx, 4
-        jbe moveTetrominoHor_check_block
+        loop moveTetrominoHor_check_block
 
     moveTetrominoHor_move:
-        mov al, [tetromino_move_dir]
-        cbw
-        add word [tetromino_x], ax
+        mov ax, [tetromino_move_dir]
+        cmp ax, 1
+        je moveTetrominoHor_move_left
+            add [tetromino_x], byte 2
+        moveTetrominoHor_move_left:
+            sub [tetromino_x], byte 1
         call drawTetromino
         ret
     
@@ -341,11 +404,11 @@ moveTetrominoHor:
 moveTetrominoDown:
     mov ax, 1
     call visibleTetromino           ;make invisible to not detect self
-    mov cx, 0
+    mov cx, 4
     moveTetrominoDown_check_block:
         mov [inW], cx
         call getTetrominoBlockPos
-        inc word [y_draw]   ;check block below
+        inc byte [y_draw]   ;check block below
         call getBlock
         mov ax, [outW]
         cmp ax, 0           ;blocked by other block
@@ -353,9 +416,7 @@ moveTetrominoDown:
         ;cmp ax, 2           ;blocked by border
         ;je moveTetrominoDown_blocked
 
-        inc cx
-        cmp cx, 4
-        jb moveTetrominoDown_check_block
+        loop moveTetrominoDown_check_block
 
     moveTetrominoDown_move:
         inc word [tetromino_y]
@@ -376,32 +437,50 @@ visibleTetromino:           ;ax 1->hidden 0->shown
     call drawTetromino
     ret
 
-getTetrominoBlockPos:       ;inW -> block id (0-3)
+getTetrominoBlockPos:       ;inW -> block id (1-4)
                             ;tetromino_temp_flag 0 -> current 1 -> temp
                             ;ret x_draw
                             ;ret y_draw
     mov ax, [inW]
+    dec ax
     cmp [tetromino_temp_flag], word 0
     jne getTetrominoBlockPos_temp
         mov si, tetromino_current_blocks
-        add si, 2               ;skip color
-    jmp getTetrominoBlockPos_current
+        add si, word 2      ;skip color
+        jmp getTetrominoBlockPos_current
     getTetrominoBlockPos_temp:
         mov si, tetromino_temp_blocks
     getTetrominoBlockPos_current:
-    mov bx, 2
-    mul bx
+    add ax, ax
     add si, ax              ;add block offset
+    xor ax, ax
+    xor bx, bx
     mov al, byte [si]
-    cbw
-    add ax, [tetromino_x]
-    mov [x_draw], ax
+    mov bl, [tetromino_x]
     
+    cmp al, 0
+    jl getTetrominoBlockPos_neg_x
+        add bl, al
+        jmp getTetrominoBlockPos_pos_x
+    getTetrominoBlockPos_neg_x:
+        neg al
+        sub bl, al
+    getTetrominoBlockPos_pos_x:
+    mov [x_draw], bl
     inc si
+    xor ax, ax
+    xor bx, bx
     mov al, byte [si]
-    cbw
-    add ax, [tetromino_y]
-    mov [y_draw], ax
+    mov bl, [tetromino_y]
+    cmp al, 0
+    jl getTetrominoBlockPos_neg_y
+        add bl, al
+        jmp getTetrominoBlockPos_pos_y
+    getTetrominoBlockPos_neg_y:
+        neg al
+        sub bl, al
+    getTetrominoBlockPos_pos_y:
+    mov [y_draw], bl
     ret
 
 getRandomTetromino:
@@ -429,10 +508,11 @@ getRandomTetromino:
         ret
 
 spawnTetromino:
-    mov ax, [tetromino_x_start]
-    mov [tetromino_x], ax
-    mov ax, [tetromino_y_start]
-    mov [tetromino_y], ax
+    mov al, [tetromino_x_start]
+    mov [tetromino_x], al
+    mov al, [tetromino_y_start]
+    mov [tetromino_y], al
+    mov [hold_used_flag], byte 0
     call selectTetromino
     call drawTetromino
     ret 
@@ -449,14 +529,13 @@ selectTetromino:
     mov cx, [b_array_size]
     shr cx, 1                               ;div array_size by 2 (1 word = 2 byte)
     mov di, tetromino_current_blocks        ;load mem adress
-    
     selectTetromino_loop:
         mov ax, word [si]                   ;read 2 byte from [si]
         mov word [di], ax                   ;write it to [di]
+
         add si, 2                           ;inc si by 2
         add di, 2                           ;inc di by 2
-        dec cx
-        jnz selectTetromino_loop
+        loop selectTetromino_loop
     ret 
 
 drawTetromino:
@@ -465,62 +544,123 @@ drawTetromino:
     cmp [tetromino_reset_flag], ax      ;check for reset_flag
     je drawTetromino_color
     mov [tetromino_reset_flag], ax      ;reset flag to 0
+    mov ax, [background_color]
     mov [c_draw_i], ax   ;more efficent to disable border draw
     mov [c_draw_o], ax
     add si, 2
     jmp drawTetromino_start
 
     drawTetromino_color:
+        xor ax, ax
         mov al, byte [si]
-        cbw
         mov [c_draw_i], ax
         inc si
+        xor ax, ax
         mov al, byte [si]
-        cbw
         mov [c_draw_o], ax
         inc si
     
     drawTetromino_start:
     mov cx, 4
-    mov bx, [tetromino_x]
+    mov bl, [tetromino_x]
     drawTetromino_loop_0:    
         mov dx, 1
         drawTetromino_loop_1:
             mov al, byte [si]
-            cbw
-            cmp ax, 0
-            jl negativ
+            cmp al, 0
+            jl drawTetromino_neg
                 ;positiv
-                add bx, ax
-                jmp next
-            negativ:
-                neg ax
-                sub bx, ax
-        next:
+                add bl, al
+                jmp drawTetromino_next
+            drawTetromino_neg:
+                neg al
+                sub bl, al
+        drawTetromino_next:
             inc si
             
             cmp dx, 0
             je drawTetromino_y
                 ;x_value
                 dec dx
-                mov [x_draw], bx
-                mov bx, [tetromino_y]
+                mov [x_draw], bl
+                mov bl, [tetromino_y]
                 jmp drawTetromino_loop_1
             drawTetromino_y:
                 ;y_value
-                mov [y_draw], bx
+                mov [y_draw], bl
                 push cx                 ;
                 call drawBlock          ; draw
                 pop cx                  ;
-                mov bx, [tetromino_x]
+                mov bl, [tetromino_x]
                 dec cx
                 jnz drawTetromino_loop_0
+        ret
+
+drawHoldTetromino:
+    mov si, hold_tetromino_blocks
+    
+    cmp [hold_used_flag], byte 0
+    je drawHoldTetromino_clear
+    ;color
+    xor ax, ax
+    mov al, byte [si]
+    mov [c_draw_i], ax
+    inc si
+    xor ax, ax
+    mov al, byte [si]
+    mov [c_draw_o], ax
+    inc si
+    jmp drawHoldTetromino_start
+    drawHoldTetromino_clear:
+        add si, 2
+        mov ax, [background_color]
+        mov [c_draw_i], ax
+        mov [c_draw_o], ax
+    drawHoldTetromino_start:
+    mov [draw_flag], word 2
+    xor bx, bx
+    mov cx, 4
+    drawHoldTetromino_loop:
+        mov bl, 3
+        mov al, byte [si]
+        cmp al, 0
+        jl drawHoldTetromino_x_neg
+            ;pos
+            add bl, al
+            jmp drawHoldTetromino_x_next
+        drawHoldTetromino_x_neg:
+            ;neg
+            neg al
+            sub bl, al
+        drawHoldTetromino_x_next:
+        mov [x_draw], byte bl
+        inc si
+        mov bl, 3
+        mov al, byte [si]
+        cmp al, 0
+        jl drawHoldTetromino_y_neg
+            ;pos
+            add bl, al
+            jmp drawHoldTetromino_y_next
+        drawHoldTetromino_y_neg:
+            ;neg
+            neg al
+            sub bl, al
+        drawHoldTetromino_y_next:
+        mov [y_draw], byte bl
+        inc si
+        push cx
+        call drawBlock
+        pop cx
+    loop drawHoldTetromino_loop
+    
+    mov [draw_flag], word 0
+    
     ret
 
-
 drawBorder:     ;subroutine to draw border around the game
-    mov word [x_draw], 0
-    mov word [y_draw], 0
+    mov byte [x_draw], 0
+    mov byte [y_draw], 0
 
     mov ax, [border_color_o]
     mov word [c_draw_o], ax
@@ -528,54 +668,118 @@ drawBorder:     ;subroutine to draw border around the game
     mov ax, [border_color_i]
     mov [c_draw_i], ax
         
-    mov [border_flag], word 1
+    mov [draw_flag], word 2
+    push word [t_x_size]
+    push word [t_y_size]
     
-    mov cx, [t_x_size]
-    inc cx
-    drawBorder_0:
-        push cx
-        call drawBlock
-        pop cx
-        inc word [x_draw]
+    mov ax, [x_hold_size]
+    mov [t_x_size], ax
+    
+    mov ax, [y_hold_size]
+    mov [t_y_size], ax
+    
+    mov cx, 2
+    drawBorder_loop:
+    cmp cx, 1
+    jne drawBorder_loop_hold
+        pop word [t_y_size]
+        pop word [t_x_size]
+        mov [draw_flag], word 1
+    drawBorder_loop_hold:
+    push cx
+
+        mov cx, [t_x_size]
+        inc cx
+        drawBorder_0:
+            push cx
+            call drawBlock
+            pop cx
+            inc byte [x_draw]
+            
+            dec cx
+            jnz drawBorder_0
         
-        dec cx
-        jnz drawBorder_0
-    
-    mov cx, [t_y_size]
-    inc cx
-    drawBorder_1:
-        push cx
-        call drawBlock
+        mov cx, [t_y_size]
+        inc cx
+        drawBorder_1:
+            push cx
+            call drawBlock
+            pop cx
+            inc byte [y_draw]
+
+            dec cx
+            jnz drawBorder_1
+        
+        mov cx, [t_x_size]
+        inc cx
+        drawBorder_2:
+            push cx
+            call drawBlock
+            pop cx
+            dec byte [x_draw]
+
+            dec cx
+            jnz drawBorder_2
+        
+        mov cx, [t_y_size]
+        inc cx
+        drawBorder_3:
+            push cx
+            call drawBlock
+            pop cx
+            dec byte [y_draw]
+
+            dec cx
+            jnz drawBorder_3
+        
         pop cx
-        inc word [y_draw]
-
-        dec cx
-        jnz drawBorder_1
+        loop drawBorder_loop
     
-    mov cx, [t_x_size]
-    inc cx
-    drawBorder_2:
+    mov [draw_flag], word 0
+    ret
+
+drawBackground:
+    mov ax, [background_color]
+    mov [c_draw_o], ax
+    mov [c_draw_i], ax
+    mov [draw_flag], word 2
+
+    mov ax, [t_x_size]
+    push ax
+    mov ax, [t_y_size]
+    push ax
+    
+    mov ax, [x_hold_size]
+    mov [t_x_size], ax
+    mov ax, [y_hold_size]
+    mov [t_y_size], ax
+
+    mov cx, 2
+    drawBackground_loop:
+        cmp cx, 1
+        jne drawBackground_loop_hold
+            pop word [t_y_size]
+            pop word [t_x_size]
+            mov [draw_flag], word 1
+        drawBackground_loop_hold:
         push cx
-        call drawBlock
+        
+        mov cx, [t_x_size]
+        drawBackground_x:
+            mov [x_draw], cl
+            push cx
+            mov cx, [t_y_size]
+            drawBackground_y:
+                mov [y_draw], cl
+                push cx
+                call drawBlock
+                pop cx
+            loop drawBackground_y
+            pop cx
+        loop drawBackground_x
         pop cx
-        dec word [x_draw]
-
-        dec cx
-        jnz drawBorder_2
-    
-    mov cx, [t_y_size]
-    inc cx
-    drawBorder_3:
-        push cx
-        call drawBlock
-        pop cx
-        dec word [y_draw]
-
-        dec cx
-        jnz drawBorder_3
-
-    mov [border_flag], word 0
-    
+        loop drawBackground_loop
+    mov [draw_flag], word 0
     ret
 
 getColor:       ;x_draw
@@ -584,9 +788,9 @@ getColor:       ;x_draw
                 ;ret c_draw_o
     call getRealPos
     mov di, ax
+    xor ax, ax
     mov al, [es:di]
-    cbw
-
+    
     mov [c_draw_o], ax
 
     add di, [x_screen]  ;one down
@@ -601,13 +805,14 @@ getColor:       ;x_draw
 getBlock:       ;x_draw
                 ;y_draw
                 ;retrun to outW   0->no block 1->block 2->border
-
+    cmp [x_draw], byte 0
+    jl getBlock_border
     call getRealPos
     mov di, ax
+    xor ax, ax
     mov al, [es:di]
-    cbw
-
-    cmp ax, 0
+    
+    cmp ax, [background_color]
     je getBlock_no_block
     cmp ax, [border_color_o]
     je getBlock_border
@@ -629,12 +834,14 @@ getBlock:       ;x_draw
 getRealPos:     ;x_draw
                 ;y_draw
                 ;ret ax
-    mov ax, [y_draw]    ;
-    mul word [t_size]   ;calc real y pos
+    xor ax, ax
+    mov al, [y_draw]
+    mul byte [t_size]   ;calc real y pos
     add ax, [y_start]   ;add y start offset
     mul word [x_screen] ;multiply with screen x size
     mov bx, ax
-    mov ax, [x_draw]    ;
+    xor ax, ax
+    mov al, [x_draw]    ;
     mul word [t_size]   ;calc real x pos
     add ax, [x_start]   ;add x start offset
     add ax, bx          ;sum all together for real x y pos
@@ -644,28 +851,50 @@ drawBlock:      ; x_draw
                 ; y_draw
                 ; c_draw_o
                 ; c_draw_i
-                ; border_flag
+                ; draw_flag 0 -> normal, 1 -> border, 2 -> holdBorder
     
-    mov ax, 0
-    cmp [y_draw], ax        ;skip if block is to high
+    mov al, 0
+    cmp [y_draw], al        ;skip if block is to high
     jge drawBlock_normal
     ret
 
     drawBlock_normal:
-       call getRealPos 
+    call getRealPos 
     
-    ;check if border flag is 1
-    mov cx, [border_flag]
+    ;check draw flag
+    mov cx, [draw_flag]
     cmp cx, 0
-    jz drawBlock_border_flag_skip
-    mov bx, ax
-    mov ax, [x_screen]
-    mul word [t_size]
-    add ax, [t_size]
-    sub bx, ax
-    mov ax, bx
-
-    drawBlock_border_flag_skip:
+    je drawBlock_draw_flag_skip
+    cmp cx, 1
+    je drawBlock_draw_flag_border
+    cmp cx, 2
+    je drawBlock_draw_flag_hold_border
+    jmp drawBlock_draw_flag_skip
+    
+    drawBlock_draw_flag_border:
+        mov bx, ax
+        mov ax, [x_screen]
+        mul word [t_size]
+        add ax, [t_size]
+        sub bx, ax
+        mov ax, bx
+        jmp drawBlock_draw_flag_skip
+    
+    drawBlock_draw_flag_hold_border:
+        mov bx, ax
+        mov ax, [t_size]
+        mov cx, [x_hold_size]
+        inc cx
+        mul cx
+        mov cx, ax
+        mov ax, [x_screen]
+        mul word [t_size]
+        add ax, [t_size]
+        add ax, cx
+        sub bx, ax
+        mov ax, bx
+        jmp drawBlock_draw_flag_skip
+    drawBlock_draw_flag_skip:
 
     mov cx, [t_size]
     dec cx
@@ -786,23 +1015,28 @@ tick_time:      dw 10000
 move_n_def: dw 40
 move_n:     dw 40
 
-border_color_o: dw 18
-border_color_i: dw 22
+border_color_o: dw 0x12
+border_color_i: dw 0x16
 
-x_draw:         dw 0
-y_draw:         dw 0
+x_hold_size:    dw 5
+y_hold_size:    dw 5
+
+background_color: dw 0x0
+
+x_draw:         db 0
+y_draw:         db 0
 c_draw_i:       dw 0
 c_draw_o:       dw 0
-border_flag:    dw 0
+draw_flag:      dw 0
 
-tetromino_x_start:  dw 4
-tetromino_y_start:  dw 0
-tetromino_x:    dw 4
-tetromino_y:    dw 0
+tetromino_x_start:  db 4
+tetromino_y_start:  db 0
+tetromino_x:    db 4
+tetromino_y:    db 0
 tetromino_s:    db 1
 tetromino_reset_flag:   dw 0
 tetromino_temp_flag:    dw 0
-tetromino_rotate_flag:   dw 0
+tetromino_rotate_flag:  dw 0
 
 key_scan_code:      db 0
 key_move_left:      db 0x4B     ;left arrow
@@ -812,9 +1046,15 @@ key_rotate_right:   db 0x20     ;d
 key_rotate_right_0: db 0x48     ;up arrow
 key_rotate_left:    db 0x1E     ;a
 key_restart:        db 0x13     ;r
+key_hold:           db 0x11     ;w
 
+hold_used_flag:     db 0
+hold_full_flag:     db 0
 
-tetromino_move_dir: db 0        ;-1 -> left  1 -> right
+hold_tetromino_blocks:      db 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+hold_tetromino_rotate_flag: dw 0
+
+tetromino_move_dir: dw 0        ;1 -> left  0 -> right
 
 tetromino_current_blocks:   db 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 tetromino_temp_blocks:      db 0, 0, 0, 0, 0, 0, 0, 0

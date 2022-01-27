@@ -40,16 +40,15 @@ init:
     
     ;move cursor
     mov ah, 0x2
-    mov bh, 0
-    mov dh, 1
-    mov dl, 1
+    mov bh, 0x0
+    mov dh, 0x1
+    mov dl, 0x1
     int 0x10
 
     ;write ASMTRIS
     mov ah, 0xE     ;tty mode
     mov bl, 0x5     ;purple
 
-    mov bl, 0x5 ;purple
     mov al, 'A'
     int 0x10
     mov al, 'S'
@@ -65,7 +64,40 @@ init:
     mov al, 'S'
     int 0x10
     
+    call print_controlls
+
     ret
+
+print_controlls:
+    mov si, msg_controlls_start
+    cmp byte [si], 0x2
+    jne print_controlls_end
+    mov bl, 0x6
+
+    mov cl, 0x3
+    print_controlls_line:
+        inc cl
+        mov ah, 0x2
+        mov bh, 0x0
+        mov dh, cl
+        mov dl, 0x1B
+        int 0x10
+        
+    print_controlls_char:
+        inc si
+
+        cmp byte [si], 0xA
+        je print_controlls_line
+        cmp byte [si], 0x3
+        je print_controlls_end
+
+        mov ah, 0xE
+        mov al, [si]
+        int 0x10
+        jmp print_controlls_char
+
+    print_controlls_end:
+        ret
 
 gameLoop:
     tickLoop_start:
@@ -89,14 +121,14 @@ gameLoop:
 
 check4AdminKeys:
     mov ah, byte [key_scan_code]
-    cmp ah, byte [key_restart]
-    je c4A_restart
+    cmp ah, byte [key_reset]
+    je c4A_reset
     ret
-    c4A_restart:
+    c4A_reset:
         ;clear return and bx from loop form stack
         pop ax
         pop ax
-        ;restart
+        ;reset
         jmp start
 
 
@@ -1045,8 +1077,19 @@ key_move_down:      db 0x50     ;down arrow
 key_rotate_right:   db 0x20     ;d
 key_rotate_right_0: db 0x48     ;up arrow
 key_rotate_left:    db 0x1E     ;a
-key_restart:        db 0x13     ;r
-key_hold:           db 0x11     ;w
+key_reset:          db 0x13     ;r
+key_hold:           db 0x39     ;space
+
+msg_controlls_start:        db 0x2
+msg_controlls_left:         db 'Left:  <-', 0xA
+msg_controlls_right:        db 'Right: ->', 0xA
+msg_controlls_down:         db 'Down:  v', 0xA
+msg_controlls_rotate_right: db 'Rot_r: d ', 0xB3, ' ^', 0xA
+msg_controlls_rotate_left:  db 'Rot_l: a', 0xA
+msg_controlls_hold:         db 'Hold:  Space', 0xA
+msg_controlls_reset:        db 'Reset: r', 0xA
+msg_controlls_end:          db 0x3
+
 
 hold_used_flag:     db 0
 hold_full_flag:     db 0

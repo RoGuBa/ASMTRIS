@@ -64,7 +64,45 @@ init:
     mov al, 'S'
     int 0x10
     
+    call resetScore
     call print_controlls
+    
+    ret
+
+resetScore:
+    mov [score], word 0
+    call updateScore
+    ret
+
+updateScore:
+    mov ah, 0x2
+    mov bh, 0x0
+    mov dh, 0x15
+    mov dl, 0x1B
+    int 0x10
+    mov si, [score_digit]
+    mov cx, 0
+    mov ax, [score]
+    updateScore_dec:
+        mov bx, 10
+        mov dx, 0
+        div bx
+        add dx, 0x30            ;ascii offset
+        mov [si], dl            ;save char
+        inc si                  ;next digit
+        inc cx                  ;save digit count
+
+        cmp ax, 0
+        jnz updateScore_dec
+    
+    dec si
+    updateScore_print:
+    mov bl, 0x8
+    mov ah, 0xE
+    mov al, [si]
+    dec si
+    int 0x10
+    loop updateScore_print
 
     ret
 
@@ -545,6 +583,7 @@ spawnTetromino:
     mov al, [tetromino_y_start]
     mov [tetromino_y], al
     mov [hold_used_flag], byte 0
+    call updateScore
     call selectTetromino
     call drawTetromino
     ret 
@@ -1026,6 +1065,9 @@ section .data
 debugDelay_time:    dw 0xF
 debugPrint_char:    dd 0
 
+score:      dw 0
+score_digit db 0, 0, 0, 0, 0
+
 inW:        dw 0
 outW:       dw 0
 
@@ -1089,7 +1131,6 @@ msg_controlls_rotate_left:  db 'Rot_l: a', 0xA
 msg_controlls_hold:         db 'Hold:  Space', 0xA
 msg_controlls_reset:        db 'Reset: r', 0xA
 msg_controlls_end:          db 0x3
-
 
 hold_used_flag:     db 0
 hold_full_flag:     db 0
